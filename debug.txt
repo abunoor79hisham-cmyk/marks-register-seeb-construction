@@ -1,0 +1,8 @@
+// Auto-generated attendance data
+const ATTENDANCE_DATA = [
+  {student:"Manahil Mohammed Abdullah AL Shekaili",course:"Architectural Drawing",instructor:"أماني الحارثية",group:"Design1-S1"},
+  {student:"Latifa Said Salim Al Hashimi",course:"Architectural Drawing",instructor:"أماني الحارثية",group:"Design1-S1"},
+  {student:"Khalfan Salim Khalfan Al-Julandani",course:"Architectural Drawing",instructor:"أماني الحارثية",group:"Design1-S1"},
+  {student:"Mulk Hamed Sinan Al Ghafri",course:"Architectural Drawing",instructor:"أماني الحارثية",group:"Design1-S1"},
+  {student:"Safa Ahmed Saleh Al Maamari",course:"Architectural Drawing",instructor:"أماني الحارثية",group:"Design1-S1"},
+  {student:"Nibras Ahmed Ibrahim Al Riyami",course:"Architectural Drawing",instructor:"أماني الحارثية",group:"Design1-

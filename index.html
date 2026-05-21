@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construction Department - Mark Sheet System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; background: #f0f2f5; }
+.nav { background: linear-gradient(135deg, #1a3a5c, #2a5f8f); color: white; padding: 0 30px; display: flex; align-items: center; height: 52px; }
+.nav h1 { font-size: 16px; margin-right: 40px; white-space: nowrap; }
+.nav-tabs { display: flex; gap: 2px; height: 100%; }
+.nav-tab { padding: 0 20px; display: flex; align-items: center; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.75); border-bottom: 3px solid transparent; transition: all 0.15s; user-select: none; }
+.nav-tab:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.nav-tab.active { color: #fff; border-bottom-color: #4fc3f7; background: rgba(255,255,255,0.12); font-weight: 600; }
+.page { display: none; padding: 20px 30px; }
+.page.active { display: block; }
+.sheets-layout { display: flex; gap: 20px; }
+.sheets-sidebar { width: 300px; flex-shrink: 0; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; max-height: calc(100vh - 100px); }
+.sheets-sidebar .sb-header { padding: 14px 16px 8px; border-bottom: 1px solid #eee; }
+.sheets-sidebar .sb-header h3 { font-size: 13px; color: #555; font-weight: 600; text-transform: uppercase; }
+.sheets-sidebar .sb-header select, .sheets-sidebar .sb-header input { width: 100%; margin-top: 6px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+.sheets-sidebar .sb-list { flex: 1; overflow-y: auto; }
+.group-item { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px; transition: background 0.15s; }
+.group-item:hover { background: #e8f0fe; }
+.group-item.active { background: #d2e3fc; border-left: 3px solid #1a73e8; font-weight: 600; }
+.group-item .badge { float: right; background: #ddd; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 11px; }
+.sheets-main { flex: 1; overflow-x: auto; }
+.sheet-title { font-size: 18px; font-weight: 600; color: #1a3a5c; margin-bottom: 4px; }
+.sheet-subtitle { font-size: 13px; color: #666; margin-bottom: 14px; }
+.sheet-controls { margin-bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.sheet-controls button { padding: 6px 16px; border: 1px solid #1a73e8; background: #fff; color: #1a73e8; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.sheet-controls button:hover { background: #e8f0fe; }
+.sheet-controls button.danger { border-color: #d93025; color: #d93025; }
+.sheet-controls button.danger:hover { background: #fce8e6; }
+table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; overflow: hidden; }
+th, td { padding: 6px 8px; text-align: center; border: 1px solid #d0d0d0; font-size: 13px; }
+th { background: #d9e1f2; font-weight: 600; color: #1a3a5c; position: relative; }
+.max-row td { background: #e2efda; color: #0066cc; font-weight: 600; font-size: 12px; }
+.max-row td.max-label { color: #555; font-weight: 400; font-size: 12px; }
+.max-row .mark-input { color: #0066cc; font-weight: 700; }
+.total-row td { background: #fce4d6; font-weight: 600; }
+.mark-input { width: 55px; padding: 4px 4px; text-align: center; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
+.mark-input:focus { outline: 2px solid #1a73e8; border-color: transparent; }
+.total-cell { font-weight: 700; color: #1a3a5c; }
+.footer-section { margin-top: 20px; padding: 14px 20px; background: #f7f7f7; border-radius: 6px; font-size: 13px; }
+.footer-section .sig-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.footer-section .sig-row span { color: #555; }
+.footer-section .sig-line { display: inline-block; min-width: 180px; border-bottom: 1px solid #333; margin-left: 4px; height: 18px; }
+.dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.stat-card .stat-num { font-size: 28px; font-weight: 700; color: #1a3a5c; }
+.stat-card .stat-label { font-size: 12px; color: #777; margin-top: 2px; }
+.progress-container { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px 20px; margin-bottom: 12px; }
+.progress-group { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.progress-group:last-child { border-bottom: none; }
+.progress-group .pg-info { width: 280px; flex-shrink: 0; }
+.progress-group .pg-info strong { font-size: 13px; }
+.progress-group .pg-info small { display: block; color: #888; font-size: 11px; }
+.progress-bar-wrap { flex: 1; height: 22px; background: #e9ecef; border-radius: 11px; overflow: hidden; margin: 0 16px; position: relative; }
+.progress-bar-fill { height: 100%; border-radius: 11px; transition: width 0.5s ease; background: linear-gradient(90deg, #4caf50, #8bc34a); }
+.progress-bar-fill.low { background: linear-gradient(90deg, #f44336, #ff7043); }
+.progress-bar-fill.medium { background: linear-gradient(90deg, #ff9800, #ffc107); }
+.progress-bar-fill.good { background: linear-gradient(90deg, #2196f3, #03a9f4); }
+.progress-pct { width: 50px; text-align: right; font-weight: 600; font-size: 13px; color: #333; flex-shrink: 0; }
+.analysis-select { margin-bottom: 16px; }
+.analysis-select select { padding: 6px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; min-width: 300px; }
+.analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.analysis-card { background: #fff; border-radius: 8px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.analysis-card h4 { font-size: 13px; color: #555; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; }
+.stat-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px solid #f5f5f5; }
+.stat-row .stat-val { font-weight: 600; }
+.highlight-green { color: #2e7d32; font-weight: 700; }
+.highlight-red { color: #c62828; font-weight: 700; }
+.highlight-orange { color: #e65100; font-weight: 700; }
+.admin-login { max-width: 400px; margin: 40px auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); text-align: center; }
+.admin-login h2 { margin-bottom: 20px; color: #1a3a5c; }
+.admin-login input { width: 100%; padding: 10px 14px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+.admin-login button { width: 100%; padding: 10px; background: #1a73e8; color: #fff; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; }
+.admin-login button:hover { background: #1557b0; }
+.admin-login .error { color: #d93025; font-size: 13px; margin-top: 8px; display: none; }
+.admin-panel { max-width: 600px; margin: 20px auto; }
+.admin-card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
+.admin-card h3 { font-size: 15px; color: #1a3a5c; margin-bottom: 12px; }
+.admin-card p { font-size: 13px; color: #666; margin-bottom: 12px; }
+.admin-card input[type=file] { display: block; margin-bottom: 10px; font-size: 13px; }
+.admin-card button { padding: 8px 20px; border: 1px solid #1a73e8; background: #1a73e8; color: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.admin-card button:hover { background: #1557b0; }
+.admin-card button.secondary { background: #fff; color: #1a73e8; }
+.admin-card .msg { margin-top: 8px; font-size: 12px; color: #2e7d32; display: none; }
+.no-sheet { text-align: center; padding: 60px; color: #999; font-size: 16px; }
+@media print { .nav, .sheets-sidebar, .sheet-controls, .no-print { display: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>Seeb VC - Construction</h1>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-tab="sheets" onclick="switchTab('sheets')">Mark Sheets</div>
+    <div class="nav-tab" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
+    <div class="nav-tab" data-tab="analysis" onclick="switchTab('analysis')">Analysis</div>
+    <div class="nav-tab" data-tab="admin" onclick="switchTab('admin')">Admin</div>
+  </div>
+</div>
+
+<!-- MARKS SHEETS -->
+<div id="page-sheets" class="page active">
+  <div class="sheets-layout">
+    <div class="sheets-sidebar">
+      <div class="sb-header">
+        <h3>Groups</h3>
+        <select id="instructorFilter" onchange="filterByInstructor()"><option value="">All Instructors</option></select>
+        <input type="text" id="searchInput" placeholder="Search groups..." onkeyup="filterGroups()">
+      </div>
+      <div class="sb-list" id="groupList"></div>
+    </div>
+    <div class="sheets-main" id="mainContent"><div class="no-sheet">Select a group from the sidebar</div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page">
+  <div class="dashboard-stats" id="dashStats"></div>
+  <div id="dashProgress"></div>
+</div>
+
+<!-- ANALYSIS -->
+<div id="page-analysis" class="page">
+  <div class="analysis-select">
+    <select id="analysisGroupSelect" onchange="renderAnalysis()"><option value="">-- Select a group --</option></select>
+  </div>
+  <div id="analysisContent"><div class="no-sheet">Select a group above to view analysis</div></div>
+</div>
+
+<!-- ADMIN -->
+<div id="page-admin" class="page">
+  <div id="adminLogin" class="admin-login">
+    <h2>Admin Login</h2>
+    <input type="text" id="adminUser" placeholder="Email">
+    <input type="password" id="adminPass" placeholder="Password">
+    <button onclick="adminLogin()">Sign In</button>
+    <div class="error" id="adminError">Invalid credentials</div>
+  </div>
+  <div id="adminPanel" class="admin-panel" style="display:none">
+    <div class="admin-card">
+      <h3>Upload New Database</h3>
+      <p>Upload a JSON file containing updated group/course data to replace the current database.</p>
+      <input type="file" id="uploadDbInput" accept=".json">
+      <button onclick="uploadDatabase()">Upload & Replace</button>
+      <div class="msg" id="uploadMsg">Database updated successfully!</div>
+    </div>
+    <div class="admin-card">
+      <h3>Save Current Marks</h3>
+      <p>Download all entered marks data as a JSON backup file.</p>
+      <button onclick="saveMarks()">Download Marks Backup</button>
+    </div>
+    <div class="admin-card">
+      <h3>Load Marks Backup</h3>
+      <p>Restore marks from a previously saved backup JSON file.</p>
+      <input type="file" id="loadMarksInput" accept=".json">
+      <button onclick="loadMarks()">Restore Marks</button>
+      <div class="msg" id="loadMsg">Marks restored successfully!</div>
+    </div>
+    <div class="admin-card">
+      <h3>Sign Out</h3>
+      <p>You are signed in as <span id="adminEmailDisplay"></span></p>
+      <button class="secondary" onclick="adminLogout()">Sign Out</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.onerror = function(msg, url, line) {
+  document.body.innerHTML = '<div style="color:red;padding:30px;font-size:18px"><h2>JavaScript Error</h2><p>'+msg+'</p><p>Line: '+line+'</p><p>URL: '+url+'</p></div>';
+  return true;
+};
+// DATA INJECTION
+const GROUPS_DATA = [{"course": "Architectural Drawing", "group": "Design1-S1", "instructor": "أماني الحارثية", "students": [[1, "4654", "Manahil Mohammed Abdullah AL Shekaili"], [1, "4693", "Latifa Said Salim Al Hashimi"], [2, "5412", "Khalfan Salim Khalfan Al-Julandani"], [3, "5542", "Mulk Hamed Sinan Al Ghafri"], [4, "5547", "Safa Ahmed Saleh Al Maamari"], [5, "5549", "Nibras Ahmed Ibrahim Al Riyami"], [6, "5591", "Qusay Saleh Mahil Al Abri"], [7, "5598", "Abdul Rahman Yahya Said Al-Majizi"], [8, "5609", "Osama Ahmed Ali Al-Aamri"], [9, "5611", "Sauod Abdullah Hamed Al Naabi"], [10, "5615", "Mohammed Sulaiman Khalfan Al Saqri"], [11, "5617", "Hamood Said Hamed Al Siyabi"], [12, "5706", "Sultan Saif Ahmed Al-Aghbari"], [13, "5721", "Zaid Nasser Rashid Al Subhi"], [14, "5767", "Al Muthana Sulaiman Said Al Hadabi"], [15, "5942", "ABDUL RAHMAN ABDULLAH SAID AL SIYABI"], [16, "5955", "MOSAB MASOUD KHAMIS AL MAHROUQI"], [17, "6009", "FERAS SALIM SAIF AL HOSNI"]]}, {"course": "Engineering Drawing1", "group": "Draw1-G1", "instructor": "أماني الحارثية", "students": [[1, "5555", "Saba Khalil Khamis Al Hasani"], [2, "5842", "Said Moosa Said Al Masoudi"], [3, "5847", "Obaid Muhammed Khamis Al Subai"], [4, "5879", "Deema Nasser Hamed Al Harasi"], [5, "5890", "Muiyad Ahmed Ali Al-Shibli"], [6, "5897", "Hamed Khalifa Ibrahim Al Balushi"], [7, "5899", "Mahamood Issa Said Al Wahaibi"], [8, "5935", "ASEEL SALIM SAID AL SADI"], [9, "6073", "Salma Hamed Abdullah Al Amri"], [10, "6074", "Safia Saleem Nasser Al Rahbi"], [11, "6075", "Magdah Mahfoodh Surur Al Busaidi"], [12, "6084", "Al Maitham Ibrahim Dawood Al Hadi"], [13, "6085", "Zkaria Zahran Mohamed Al Harrasi"], [14, "6086", "Ali Juma Yousuf Al Farsi"], [15, "6087", "Al Warith Salim Saif Al Jabri"], [16, "6088", "Mohamed Shakil Mohamed Al Maimani"], [17, "6192", "Taqwa Nasser Mansoor Al Azri"], [18, "6193", "Mohammed Khalid Salim Al-Naabi"], [19, "6194", "Rudina Issa Khamis Al-Naabi"], [20, "6196", "Elaf Khalid Sulaiman Al Samasami"], [21, "6277", "Mohamed Hamed Mohamed Al Tamtami"], [22, "6300", "SARAH SAIF HAMED AL GUSAINI"], [23, "6301", "AL AYHAM IBRAHIM SAIF AL MUSALLAMI"], [24, "6310", "AHMED NASSER MOHAMMED AL QASABI"], [25, "6311", "AL WARETH KHALID ALI AL SIYABI"], [26, "6312", "AHMED KHALID MUBARAK AL RAHBI"]]}, {"course": "Engineering Drawing1", "group": "Draw1-G2", "instructor": "أماني الحارثية", "students": [[1, "5891", "Raeef Hamad Saif Al-Mabsali"], [2, "5892", "Mazin Malallah Khusaib Al Battashi"], [3, "6076", "Manasik Abdullah Khalfan Al Wadhahi"], [4, "6078", "Yumna Yahya Saif Al Julandani"], [5, "6079", "Nouf Nasr Abdullah Al Shandudi"], [6, "6081", "Raghad Abdullah Mohamed Al Hasani"], [7, "6083", "Lamia Abdullah Mohammed Al Rahbi"], [8, "6092", "Afalh Khamis Said Al Sulaimi"], [9, "6093", "Al Munther Rashid Humaid Al Harmali"], [10, "6096", "Salim Issa Salim Al Shukaili"], [11, "6097", "Omar Saayid Said Al Tobi"], [12, "6098", "Qaboos Hood Rashid Al Alawi"], [13, "6100", "Zakariya Mahfoodh Khalfan Al Rawahi"], [14, "6101", "Hamed Mohamed Hamed Al Farsi"], [15, "6102", "Mohammed Abdulla Mohsin Al Jabri"], [16, "6103", "Hammam Younis Hamed Al Jabri"], [17, "6133", "Esmaeil Abdullah Mohamed Al Afifi"], [18, "6140", "Said Mahmood Ahmed Al Naabi"], [19, "6164", "Ishak Said Ahmed Al Ghanani"], [20, "6209", "Abdul Rahman Mubarak Salim Al Jabri"], [21, "6212", "Hamza Abdullah Khalfan Al Mahrami"], [22, "6278", "Nassr Said Humaid Al Harthy"], [23, "6279", "Gheith Salim Suwaid Al Rahbi"], [24, "6286", "ELAF AHMED SALIM AL SUBHI"], [25, "6287", "RAZAN NASSER HAMDAN AL RRIYAMI"], [26, "6308", "WESAM SAIF HAMED AL BAHRI"]]}, {"course": "Practical", "group": "Paint & Decoration 22", "instructor": "أمل الفارسية", "students": [[1, "24120", "AL WALEED DHAWI MALIH AL SUBHI"], [2, "24121", "NASER KHALIFA DARWISH AYLI AL SUBHI"], [3, "24123", "WASIM HUMAID MOULADAD AL BULUSHI"], [4, "24124", "ABDULIAH SULAIMAN DARWISH AL ALAWI"], [5, "24125", "AWF MURAD SHAMBEH AL BALUSHI"], [6, "24127", "MOHAMED ABDULLAH ZAID AL NAABI"], [7, "24131", "MAHDI ABDULLAH ALI FAKEER AL HARRASI"], [8, "24134", "SALIM ABDULLAH THANI AL MAHARBI"], [9, "24135", "AZZAN SAUD ABDUL AZIZ AL RAISI"]]}, {"course": "Technology", "group": "Paint & Decoration 22", "instructor": "أمل الفارسية", "students": [[1, "24120", "AL WALEED DHAWI MALIH AL SUBHI"], [2, "24121", "NASER KHALIFA DARWISH AYLI AL SUBHI"], [3, "24123", "WASIM HUMAID MOULADAD AL BULUSHI"], [4, "24124", "ABDULIAH SULAIMAN DARWISH AL ALAWI"], [5, "24125", "AWF MURAD SHAMBEH AL BALUSHI"], [6, "24127", "MOHAMED ABDULLAH ZAID AL NAABI"], [7, "24131", "MAHDI ABDULLAH ALI FAKEER AL HARRASI"], [8, "24134", "SALIM ABDULLAH THANI AL MAHARBI"], [9, "24135", "AZZAN SAUD ABDUL AZIZ AL RAISI"]]}, {"course": "Drawing", "group": "Car Painting 21", "instructor": "أمير النعيمي", "students": [[1, "24275", "Ibrahim Sulaiyam Khalfan Al-Habsi"], [2, "24276", "Sanad Khalfan Salim Ali Al-Battashi"], [3, "24277", "Zaeem Abdulla Said Al Ramadhani"], [4, "24279", "Fayad Saif Rashid Sulaiman Al Farsi"], [5, "24280", "Adil Salmeen Mubarak Al Bulushi"], [6, "24282", "Waleed Salim Said Al Hadidi"], [7, "24283", "Yarob Majeed Hidaib Obaid Al Fori"], [8, "24284", "Mohammed Badar Mohammed Hamood Al Siyabi"], [9, "24285", "Mohamed Salim Mohamed Al Tarshi"], [10, "24286", "Ali Khalfan Salim Hassan Al Balushi"], [11, "24287", "Musab Hashil Al Shain Saad Al Aamri"], [12, "24288", "Osama Issa Mohamed Shambeh Al Bulush"], [13, "24291", "Ahmed Abdullah Mohamed Hamood Al Farey"], [14, "24292", "Ahmed Khalifa Nasser Salim Al-Qasmi"], [15, "24293", "Bashar Mohammed Ahmed Ali Al-Fahdi"]]}, {"course": "Drawing", "group": "Electronic 21", "instructor": "أمير النعيمي", "students": [[1, "24254", "Al-Moatasem Sabeit Juma Al-Owaisi"], [2, "24255", "Ibrahem Abdullah Salim Al-Busaidi"], [3, "24257", "Ahmed Sulaiman Habib Khamis Al-Fakhri"], [4, "24258", "Ahmed Maqbool Rabia Al Hinai"], [5, "24259", "Ahmed Mubarak Shambeh Moosa Al Balushi"], [6, "24260", "Jassim Mohamed Rafiq Shair Mohamed Al Bulushi"], [7, "24263", "Salim Mohammed Salim Al Barwani"], [8, "24265", "Sami Mubarak Antar Al Saadi"], [9, "24266", "Saleh Ghabish Mubarak Firuz Al-Rasbi"], [10, "24267", "Abdulrahman Badar Hilal Juma Al Hasni"], [11, "24268", "Abdul Rahman Jamil Mabyoua Al Noufly"], [12, "24269", "Abdul Aziz Obaid Zaid Al-Manwari"], [13, "24270", "Abdullah Yousuf Abdullah Suliman Al Sulaimi"], [14, "24272", "Mohammed Surur Khalfan Surur Al-Harrasi"], [15, "24273", "Nibras Nasser Mohammed Al Salmi"], [16, "24274", "Hazaa Khalid Ali Al-Shabibi"]]}, {"course": "Drawing", "group": "Refrigeration 21", "instructor": "أمير النعيمي", "students": [[1, "24213", "Yousuf Yaqoob Saif Bani Oraba"], [2, "24214", "Zuhair Said Salim Saif Al Rawahi"], [3, "24215", "Sulaiman Khalifa Sulaiman Majed Al Ghafri"], [4, "24216", "Hussen Ali Rashid Mohammed Al Hatmi"], [5, "24217", "Ibrahim Khalifa Khadm Al Mujaini"], [6, "24218", "Al Zubair Ahmed Mohammed Al Hamdani"], [7, "24220", "Saad Said Saleh Al Hattali"], [8, "24221", "Qusay Said Salim Al Jabri"], [9, "24222", "Mujtaba Ahmed Shambeh Al Bulushi"], [10, "24223", "Sultan Saif Hamdan Al Rawahi"], [11, "24224", "Saleh Rabia Saleh Dhahi Al Breiki"], [12, "24225", "Omar Moosa Humaid Al Haddabi"], [13, "24226", "Nassir Talib Nasser Al Shekaili"], [14, "24228", "Aflah Mubarak Marhoun Khalaf Al Abri"], [15, "24229", "Idrees Adil Abdullah Al Hooti"], [16, "24230", "Abdulmajeed Saleh Hassan Al Bulushi"], [17, "24231", "Al Motasim Saif Mubarak Al Sh Ukaili"], [18, "24232", "Basim Talib Nasser Al-Shukaili"], [19, "24233", "Yoosef Sulaiman Mohammed Sulaiman Al Hatmi"]]}, {"course": "Drawing", "group": "Refrigeration 22", "instructor": "أمير النعيمي", "students": [[1, "24236", "Abdullmunim Said Sulaiman Al Badri"], [2, "24239", "Majid Sulaiman Mohammed Al Siyabi"], [3, "24240", "Ahmed Rashid Nasser Al Rawahi"], [4, "24241", "Omar Iqbal Hassan Al Zadjali"], [5, "24245", "Ahmed Moosa Habib Aulad Thani"], [6, "24246", "Nawaf Salim Khamis Al Hadifi"], [7, "24247", "Abdulmalik Marhoon Hashil Al Rajaibi"], [8, "24248", "Hakim Moosa Maayouf Al Harrasi"], [9, "24249", "Ayman Lahi Mohammed Omar Al Balushi"], [10, "24251", "Ammar Abdallah Mohammed Al Harrasi"], [11, "24252", "Ahmed Juma Lahi Al Saadi"], [12, "24253", "Alaiham Rashid Saif Mohammed Al Kiwadhi"]]}, {"course": "Drawing", "group": "Welding 21", "instructor": "أمير النعيمي", "students": [[1, "24159", "Mohammed Ahmed Shatit Al Nahdi"], [2, "24164", "Murad Rasheed Karim Bakhsh Murad Al Bulushi"], [3, "24165", "Bashar Hamed Issa Hamed Al Rajhi"], [4, "24166", "Maadh Khalfan Humaid Al Amari"], [5, "24167", "Akram Dawood Khamis Al Saadi"], [6, "24170", "Ibrahim Khamis Zayid Al Yahmadi"], [7, "24171", "Said Ali Said Al Khusaibi"], [8, "24198", "Faisal Fahad Rashid Al Maani"], [9, "24199", "Abdulaziz Abdullah Rashid Al Qasmi"], [10, "24203", "Ali Abdulkarim Mohammed Ahmed Al Mushaifri"], [11, "24205", "Al Shaham Malallah Dhahi Balish Al Amri"], [12, "24206", "Hussain Ali Khalfan Salim Al Zuraifi"], [13, "24208", "Talal Abdallah Nasser Mohammed Al Hasani"], [14, "24209", "Ahmed Hamed Mubarak Al Aamri"], [15, "24210", "Zaid Aziz Khadam Abdullah Al Salehi"], [16, "24212", "Hazim Adam Murad Al Zadjali"]]}, {"course": "Drawing", "group": "Welding 22", "instructor": "أمير النعيمي", "students": [[1, "24177", "Aiman Juma Al Abd Al-Subhi"], [2, "24178", "Najeeb Naseeb Khamis Salmeen Al Subhi"], [3, "24181", "Alaa Eldin Sulaiman Naseeb Al Balushi"], [4, "24182", "Abdulaziz Khamis Ramadhan Al Balushi"], [5, "24183", "Khamis Juma Khamis Al Balushi"], [6, "24184", "Khalid Lafi Badouy Al Kharusi"], [7, "24185", "Yasir Juma Salim Al Balushi"], [8, "24186", "Mubarak Darwish Abdullah Darwish Al Subhi"], [9, "24187", "Haji Moosa Haji Al Balushi"], [10, "24188", "Dawood Ali Khalfan Al Siyabi"], [11, "24189", "Marwan Badar Harith Al Mayahi"], [12, "24190", "Khalifa Abdullah Khalifa Zahir Al Sahili"], [13, "24191", "Yosef Marhoon Balushi Ziyad Al Rusheidi"], [14, "24193", "Al-Basam Khalfan Mohammed Al Basami"], [15, "24194", "Al Khatab Ali Rashid Al Mahdouri"], [16, "24195", "Ryiadh Salim Mohamed Al Hamdani"], [17, "24196", "Nawaf Shaghal Mubarak Nasser Al Bahri"]]}, {"course": "Engineering Drawing1", "group": "Draw1-G3", "instructor": "أمير النعيمي", "students": [[1, "5862", "Sabaa Badar Juma Al Falahi"], [2, "5868", "Miqat Muhammed Hamdan Al Brumi"], [3, "5921", "AHMED AWADH SAID AL LAMKI"], [4, "6005", "Renad Mohamed Ahmed Al Khanjari"], [5, "6115", "Noof Nasser Amur Nasser Al Sabqi"], [6, "6255", "Ariyam Habib Murad Al Balushi"], [7, "6256", "Halima Khamis Said Al Saghir"], [8, "6257", "Baraah Khalfan Humaid Al Awaidi"], [9, "6258", "Muznah Majid Yak Shambeh Al Balushi"], [10, "6259", "Raya Yaqoob Nasser Al Siyabi"], [11, "6260", "Zainab Al Nasr Mohamed Al Azri"], [12, "6261", "Raqia Ahmed Khamis Al Maawali"], [13, "6262", "Istebraq Basim Mohamed Al Bulushi"], [14, "6263", "Saba Sulaiman Saif Al Dhahli"], [15, "6264", "Arwa Hamed Nasser Al Bousafi"], [16, "6265", "Malaak Hamed Ali Al Shanawi"], [17, "6266", "Renad Khalid Khalfan Al Naabi"], [18, "6267", "Weaam Rajab Ali Alowaisi"], [19, "6268", "Mohanad Ahmed Mohammed Al Musalami"], [20, "6269", "Osama Nasser Hamed Al Jabri"], [21, "6270", "Hilal Ahmed Moosa Al Kharusi"], [22, "6271", "Mohammed Sulaiman Salim Al Amri"], [23, "6272", "Qusay Mansoor Ali Al Nabhani"], [24, "6273", "Alayham Khalid Ali Al Wahabi"], [25, "6274", "Khalid Waleed Issa Al Balushi"], [26, "6275", "Muhraseb Talal Awadh Al Sabahi"], [27, "6276", "Dawod Sulaiman Mubarak Al Hashmi"], [28, "6340", "Fatma Mohammed Mansoor Al Rawahi"]]}, {"course": "History of Design 2", "group": "Design1-S4", "instructor": "أمير النعيمي", "students": [[3, "4451", "Ali Mohammed Ali Al Mandhari"], [3, "4802", "JOHINA YOUNIS NASSER AL BATTASHI"], [4, "4886", "Duaa Mohamed Khamis Al Shuaibi"], [5, "4992", "Shahd Khalfan Amur Al Qasimi"], [6, "5165", "SHOMOOKH AHMED MAHFOODH SALIM AL RIYAMI"], [7, "5317", "Azah Ahmed Ali Al Musallami"], [8, "4539", "FAISEL HAMOOD SULAIMAN Abdullah AL KHARUSI"], [8, "5207", "AL ZAHRA MANSOOR MOHAMED AL ANBARI"], [8, "5333", "MEERAH AHMED JUMA AL JABRI"], [8, "5743", "Israa Khamis Aamir Al-Ismaili"], [9, "5744", "Afiya Saleh 'Abdullah Al Maktoumi"], [16, "4862", "HAMZAH YOUSUF MUHANNA SAID AL AZAWANI"]]}, {"course": "Architectural Presentation II", "group": "Draftsman1-S5", "instructor": "أميرة العميرية", "students": [[2, "4519", "MUSTAFA KHALIFA SULAIMAN AL-KHAZAAI"], [3, "4713", "Fatima Ahmed Darwish Al Amri"], [4, "4714", "Maimoona Mohammed Said Al Sheibani"], [5, "4715", "Ruba Hamed Salim Al Shaqsi"], [6, "4719", "Zahra Saif Sulaiman Ambusaidi"], [7, "4737", "Ali Bader Salim Al Salami"], [8, "4797", "SARAH FAHAD DOOZ AL ZADJALI"], [9, "4867", "ABDUL MALIK KHALID KHALFAN AL HAMDANI"], [10, "4873", "Ahmed Salim Rashid Al Riyami"], [11, "4962", "Maryam Sulaiyam Huwaishal Al Hinai"], [12, "4963", "Qabs Hamood Hamed Al Hinai"], [13, "4967", "Nasra Marzooq Bakhit Al Rahbi"], [14, "4981", "Aisha Jamal Hammad Al Zakwani"], [15, "5009", "Fajar Ahmed Said Al Nabhani"], [16, "5059", "Afnan Hamed Abdullah Al Khuzairi"], [17, "5218", "HOUDA JUMA SALIM AL-YAHYAAI"], [18, "5329", "ASSEL ADNAN AHMED AL RAWAHI"], [19, "5331", "MAY MOHAMED ABDULLAH AL MAHRUQI"], [20, "5464", "Sondus Anis Abdulla Al Jabri"], [21, "5465", "Ruaya Saif Khamis Al Harrasi"], [22, "5739", "Aisha Murad Lal Bakhsh Al Balushi"], [23, "5740", "Ibtehal Said Fraish Al Mahrizi"], [24, "6012", "NOOR ALI HAMED AL GHUFAILI"]]}, {"course": "Engineering Drawing2", "group": "Draw2-G1", "instructor": "أميرة العميرية", "students": [[1, "5386", "Mohammed Hamed Salim Al-Waheibi"], [2, "5596", "Sulaiman Mohamed Sulaiman Al-Maawali"], [3, "5709", "Omar Hamed Abdullah Al- Saadi"], [4, "5766", "Omar Ali Sulaiman Al Ghafri"], [5, "5843", "Muhammed Sulaiman Muhammed Al Subhi"], [6, "5858", "Shahla Khamis Khalfan Al Rahbi"], [7, "5859", "Rataj Nasser Salim Al Sulaimi"], [8, "5860", "Yusra Khalfan Humaid Al Wahibi"], [9, "5861", "Barah Yousuf Hamood Al Maawali"], [10, "5863", "Noor Al Huda Yahya Mohammed Al Aamri"], [11, "5864", "Bashair Said Mubarak Al Rahbi"], [12, "5866", "Shadha Qais Hassn Al Balushi"], [13, "5867", "Raghad Idrees Saleh Al Khusaibi"], [14, "5885", "Ameen Ahmed Mubarak Al Saeghi"], [15, "5886", "Ahmed Mohammed Ali Al Harrasi"], [16, "5887", "Mutasim Said Mohamed Al Rahbi"], [17, "5888", "Turki Faisal Abdullah Al Zakwani"], [18, "5889", "Moadh Mahmood Saif Al Hadhrami"], [19, "5928", "AZZA SALEH SAIF AL AGHBARI"], [20, "6018", "Salaah Saleh Sulaiman Al Maharbi"], [21, "6327", "AL MOATAZ AHMED SAUD AL FARAEY"], [22, "6333", "HARETH TALAL RASHID AL HARTHY"], [23, "6334", "MAJID MOHAMED SALIM Al Shukaili"]]}, {"course": "Engineering Drawing2", "group": "Draw2-G2", "instructor": "أميرة العميرية", "students": [[1, "5869", "Afnan Sultan Ali Al Harthi"], [2, "5870", "Ibtisam Saleh Said Al Wahaibi"], [3, "5871", "Mehad Mohamed Ali Al Akhzami"], [4, "5872", "Ranad Ahmed Ali Al Harthy"], [5, "5873", "Al Reem Saif Hamed Al Siyabi"], [6, "5875", "Jinan Majid Hamed Al Habsi"], [7, "5893", "Waeil Yousuf Marhoon Al Amri"], [8, "5894", "Al Yaqdhan Yaqoob Salim Al Harmali"], [9, "5895", "Qais Yousuf Khalfan Al Yahyaei"], [10, "5896", "Ahmed Abdullah Saif Al Siyabi"], [11, "5898", "Mohammed Saleh Said Al Rahbi"], [12, "5902", "Al Muhnad Mahmood Nasser Al Rahbi"], [13, "5903", "Al Ayhm Mohamed Hashil Al Makhmari"], [14, "5904", "Mohammed Hamed Salim Al Siyabi"], [15, "5905", "Hamed Hilal Hamed Al Rashdi"], [16, "5927", "QOSAY SULAIMAN MUSALLAM AL-MAKDAMI"], [17, "5929", "ILHAM HUMAID SALIM AL KHATRI"], [18, "6004", "Abrar Juma Khalfan Al Rawahi"]]}, {"course": "Architectural Perspective", "group": "Draftsman1-S2", "instructor": "إيمان العفانية", "students": [[1, "5295", "AYMAN MOHAMED SULAIMAN AL RASHDI"], [2, "5376", "Narjes Mohammed Salim Al-Qarwashi"], [3, "5377", "Abeer Hatm Khalfan Al-Hadidi"], [4, "5384", "Maha Abdulhakeem Abdullah Al-Farsi"], [5, "5385", "Fatima Issa Said Al-Nadhiri"], [6, "5388", "Raghad Saif Said Al-Rashdi"], [7, "5389", "Al-Nuha Rashid Saif Al-Suti"], [8, "5390", "Zaynab Yousuf Salim Al-Jabri"], [9, "5392", "Al-Gaidaa Saif Ali Al-Hasni"], [10, "5398", "Fajir Adil Ahmed Al-Hadi"], [11, "5409", "Danah Sulaiman Dawood Al-Balushi"], [12, "5416", "Ruqiya Rashid Salim Al-Siyabi"], [13, "5473", "Salwa Abdullah Saleem Al Jahhafi"], [14, "5718", "Aminah Khalfan Amor Al Naabi"], [15, "5719", "Mram Abdullah Ali Al Shibli"], [16, "5748", "Eyad Munir Ayil Al Amri"], [17, "5957", "AL YAQEEN TALIB SAID AL SIYABI"], [18, "5958", "RAWAN NASSER KHALFAN AL BUSAFI"], [19, "5962", "MIRAJ ASAD RAMADHAN AL BALUSHI"], [20, "6182", "Shadha Said Ali Al Rawahi"], [21, "6184", "Adil Jameel Salim Al Makhmari"], [22, "6185", "Saja Salim Juma Al Siyabi"], [23, "6195", "Muhrah Ali Mur Al Majaali"]]}, {"course": "Architectural Perspective", "group": "Draftsman2-S2", "instructor": "إيمان العفانية", "students": [[2, "5648", "Rawan Marhoon Sabah Al-Badri"], [3, "5650", "Salma Said Mohamed Al Jardani"], [4, "5651", "Maather Harith Juma Al Amri"], [5, "5652", "Laila Riyadh Mattar Al Arimi"], [6, "5653", "Rana Salim Harith Al Rawahi"], [7, "5654", "Safa Mohammed Khalaf Al Subhi"], [8, "5655", "Rahma Said Khamis Al Hinai"], [9, "5656", "Rataj Sulaiman Hamood Al Sarkhi"], [10, "5657", "Mariam Aman Allah Mohammed Al Balushi"], [11, "5658", "Naeema Sultan Mohammed Al Aamri"], [12, "5659", "Hajar Ali Ayil Al Julandani"], [13, "5687", "Majd Mohamed Sulaiman Al Badri"], [14, "5715", "Samaa Talal Nabahan Al Nabhani"], [15, "5720", "Abrar Muhanna Khalaf Al Abdali"], [16, "6183", "Almunthir Majid Saif Al Siybi"], [17, "6186", "Abdullh Salim Ahmed Al Sheibani"], [18, "6329", "AYISHA MUBARAK SALIM AL HINAI"]]}, {"course": "Administrative Design", "group": "Design1-S5", "instructor": "بدور الصمصامية", "students": [[1, "4517", "SAEED ZAID SULTAN AL FARSI"], [2, "4649", "AL Aqhabis Khamis Saif AL-Shukail"], [3, "4685", "Abrar Saleem Rashid Al Hashimi"], [4, "4686", "Atheer Ali Said Al Batrani"], [5, "4688", "Esraa Said Khatim Al Abrawi"], [6, "4690", "Ghidaa Hamood Said Al-Omairi"], [7, "4695", "Maisaa Ali Salim Al Shekaili"], [8, "4696", "Maroa Masaaod Said Al-Shukaili"], [9, "4700", "Noor Juma Ali Al-Hadidi"], [10, "4706", "Taif Khalid Saud Al Hosni"], [11, "4747", "Omar Ayoub Abdullah Al Rawahi"], [13, "4760", "Yumna Sulaiman Sabeeh Al Sharji"], [14, "4799", "RAZAN ABDULLAH MUBARAK AL KHUSAIBI"], [15, "4810", "SHAHAD NASSER SAGHIR AL RUSHAIDI"], [16, "4844", "SAID HUMAID SAID AL SIYABI"], [17, "5054", "Hoor Ali Mohamed Al Zadjali"], [18, "5461", "Marya Zayid Yaqoub Al Harrasi"], [19, "5462", "Aisha Mohamed Said Al Jabri"], [20, "5463", "Hamdh Ali Khamis Al Maashari"], [21, "5504", "Wasaif Said Khalfan Al Saadi"]]}, {"course": "Fundamentals of Design", "group": "Design1-S1", "instructor": "بدور الصمصامية", "students": [[1, "4693", "Latifa Said Salim Al Hashimi"], [2, "5412", "Khalfan Salim Khalfan Al-Julandani"], [3, "5542", "Mulk Hamed Sinan Al Ghafri"], [4, "5547", "Safa Ahmed Saleh Al Maamari"], [5, "5549", "Nibras Ahmed Ibrahim Al Riyami"], [6, "5591", "Qusay Saleh Mahil Al Abri"], [7, "5598", "Abdul Rahman Yahya Said Al-Majizi"], [8, "5609", "Osama Ahmed Ali Al-Aamri"], [9, "5611", "Sauod Abdullah Hamed Al Naabi"], [10, "5615", "Mohammed Sulaiman Khalfan Al Saqri"], [11, "5617", "Hamood Said Hamed Al Siyabi"], [12, "5706", "Sultan Saif Ahmed Al-Aghbari"], [13, "5721", "Zaid Nasser Rashid Al Subhi"], [14, "5767", "Al Muthana Sulaiman Said Al Hadabi"], [15, "5942", "ABDUL RAHMAN ABDULLAH SAID AL SIYABI"], [16, "5955", "MOSAB MASOUD KHAMIS AL MAHROUQI"], [17, "6009", "FERAS SALIM SAIF AL HOSNI"]]}, {"course": "Architecture Presentation I", "group": "Draftsman1-S3", "instructor": "بدور المعولية", "students": [[1, "4950", "Faisal Fahad Mubarak Al Busaidi"], [1, "5064", "Al Baraah Mahmood Salim Al Subhi"], [2, "5077", "Al Mohanad Mohammed Sulaiman Al Baroumi"], [3, "5090", "Idrees Ali Abdullah Al Akhzami"], [4, "5101", "Nasir Abdullah Nasser Wadi"], [5, "5142", "AHMED SAID MUBARAK AL MUHARRAMI"], [6, "5186", "AMANI KHALFAN HAMED AL JULANDANI"], [7, "5282", "ALMARWA SALIM KHULAFIN AL JULANDANI"], [8, "5284", "RETAJ MUBARAK MOHAMED AL DUHANI"], [9, "5292", "ALIYAA KHAMIS KHASIB AL AAMRI"], [10, "5479", "Retaj Aiman Ahmed Al Jabri"], [11, "5482", "Al Mutasim Hamed Mohamed Al Hasni"], [12, "5493", "Maram Said Mohammed Al Hasani"], [13, "5730", "Tarteel Nasser Malallah Al Amri"], [14, "5988", "ALHUSSAIN ALI MUBARAK AL-WAHAIBI"], [15, "5992", "AL YAQIN SAID KHAFAN AL WADHAHI"], [16, "5997", "ANFAL KHALFAN NASSER AL MAAMRI"], [17, "6187", "Khalsa Amed Mohammed Al Rahbi"], [19, "5039", "RAYYAN KHALID MOHAMED AL MANDHARI"]]}, {"course": "Project II (Public Building)", "group": "Draftsman1-S6", "instructor": "بدور المعولية", "students": [[1, "3709", "Rayan Salim Saif Al Habsi"], [2, "4213", "Wadhha Khamis Saleem Al Asakari"], [3, "4362", "BADER HAMED IBRAHIM AL-WAHAIBI"], [4, "4374", "SAUD HAMED SAUD AL WAHAIBI"], [5, "4532", "GHAITH KHALID NASSER ADIM AL HINAI"], [6, "4543", "NASEER SALIM NASSER AL JABRI"], [7, "4645", "Nasraa Saleh Said AL Siyabi"], [8, "4816", "SAFA MARIR HUMAID AL HUMAIDHI"], [9, "4817", "ATHIR YAHYA MOHAMMED AL BATTASHI"], [10, "4875", "Marwa Abdullah Khalfan Al Wadhahi"], [11, "5016", "Yusra Saif Khalfan Al Rahbi"], [12, "5017", "Abrar Ahmed Said Al Rubkhi"], [13, "5018", "Hebah Zahir Hamed Zahir Al Bahri"], [14, "5169", "SAIF ALI MUBARIK HAMDAN AL SHUKRI"], [15, "5193", "MIQAT ALI HUMAID AL BATTASHI"], [16, "5194", "REHAB ALI ABDULLAH AL BALUSHI"], [17, "5372", "Al Zahra Said Juma Al Shuaili"]]}, {"course": "Engineering Surveying", "group": "Draftsman1-S4", "instructor": "حسن بن سعيد المعمري", "students": [[1, "4085", "Rawan Khamis Thani Al Rajibi"], [2, "4471", "Ahmed Awadh Sulaiyam Al Dawaoudi"], [3, "4603", "YOUSEF AHMED ABDULLAH MAHFOODH AL MASHRAFI"], [3, "4808", "LYAN RIYADH IBRAHIM AL WAHAIBI"], [4, "4884", "Maimana Mohammed Salim Al Jabri"], [5, "4885", "Shadha Khamis Khalfan Al Rahbi"], [6, "4887", "Fatima Nasser Mohammed Al Tubi"], [7, "4888", "Safiya Mahmood Said Al Riyami"], [8, "4889", "Sama Khalifa Saud Al Kasbi"], [9, "4890", "Arwa Sulaiman Said Al Siyabi"], [10, "4891", "Estbraq Waleed Salim Al Ghdani"], [11, "4893", "Raya Mohammed Masoud Al Subhi"], [12, "4953", "Yosif Ali Mohamed Al Nafaei"], [13, "4991", "Sara Saleh Hamdan Al Darmaki"], [14, "5004", "Suha Khalid Mohammed Bani Oraba"], [15, "5121", "Al Fardoos Mohammed Sulaiman Al Marshoudi"], [16, "5122", "Aysha Saleem Salim Al Abri"], [17, "5124", "Ryan Imad Mohamed Al Ajmi"], [18, "5125", "Sarah Ahmed Nasser Al Aufi"], [19, "5127", "Abdul Malik Abdullah Rashid AlSiyabi"], [20, "5160", "OMAR ALI KHASEIF AL MAMARI"], [21, "5177", "NOOR SALIM MOHAMMED AL HADHRAMI"], [22, "5178", "HOURA ALI NASSER AL-SHIBLI"], [23, "5184", "ZUWAINA HAMED NASSER AL MASKARI"], [24, "5311", "EILAF TALAL MOHAMED AL RAISI"], [25, "5315", "SARA MOOSA SALIM AL WAHIDI"], [27, "5781", "Rusul Hilal Hamad Al Khusaibi"], [28, "5996", "BRAAH KHALID YAQOOB AL MAHARBI"], [29, "5998", "BAYAN KHASIB MAHIL AL SULAIMI"], [30, "5999", "MAYTHAM SULAIMAN SAIF AL HINAI"], [31, "6000", "KHAWLA SAIF HAMAD AL AMRI"]]}, {"course": "Environmental control in building", "group": "Draftsman1-S4", "instructor": "حسن بن سعيد المعمري", "students": [[1, "4085", "Rawan Khamis Thani Al Rajibi"], [2, "4471", "Ahmed Awadh Sulaiyam Al Dawaoudi"], [3, "4808", "LYAN RIYADH IBRAHIM AL WAHAIBI"], [4, "4884", "Maimana Mohammed Salim Al Jabri"], [5, "4885", "Shadha Khamis Khalfan Al Rahbi"], [6, "4887", "Fatima Nasser Mohammed Al Tubi"], [7, "4888", "Safiya Mahmood Said Al Riyami"], [8, "4889", "Sama Khalifa Saud Al Kasbi"], [9, "4890", "Arwa Sulaiman Said Al Siyabi"], [10, "4891", "Estbraq Waleed Salim Al Ghdani"], [11, "4893", "Raya Mohammed Masoud Al Subhi"], [12, "4953", "Yosif Ali Mohamed Al Nafaei"], [13, "4991", "Sara Saleh Hamdan Al Darmaki"], [14, "5004", "Suha Khalid Mohammed Bani Oraba"], [15, "5121", "Al Fardoos Mohammed Sulaiman Al Marshoudi"], [16, "5122", "Aysha Saleem Salim Al Abri"], [17, "5124", "Ryan Imad Mohamed Al Ajmi"], [18, "5125", "Sarah Ahmed Nasser Al Aufi"], [19, "5127", "Abdul Malik Abdullah Rashid AlSiyabi"], [20, "5160", "OMAR ALI KHASEIF AL MAMARI"], [21, "5177", "NOOR SALIM MOHAMMED AL HADHRAMI"], [22, "5178", "HOURA ALI NASSER AL-SHIBLI"], [23, "5184", "ZUWAINA HAMED NASSER AL MASKARI"], [24, "5311", "EILAF TALAL MOHAMED AL RAISI"], [25, "5315", "SARA MOOSA SALIM AL WAHIDI"], [27, "5781", "Rusul Hilal Hamad Al Khusaibi"], [28, "5996", "BRAAH KHALID YAQOOB AL MAHARBI"], [29, "5998", "BAYAN KHASIB MAHIL AL SULAIMI"], [30, "5999", "MAYTHAM SULAIMAN SAIF AL HINAI"], [31, "6000", "KHAWLA SAIF HAMAD AL AMRI"], [32, "6330", "WARDA MOHAMED SULAIMAN ALNUUMANI"]]}, {"course": "Quantities Estimation I", "group": "Draftsman1-S5", "instructor": "حسن بن سعيد المعمري", "students": [[1, "3709", "Rayan Salim Saif Al Habsi"], [2, "4213", "Wadhha Khamis Saleem Al Asakari"], [2, "4519", "MUSTAFA KHALIFA SULAIMAN AL-KHAZAAI"], [3, "4713", "Fatima Ahmed Darwish Al Amri"], [4, "4714", "Maimoona Mohammed Said Al Sheibani"], [5, "4715", "Ruba Hamed Salim Al Shaqsi"], [6, "4719", "Zahra Saif Sulaiman Ambusaidi"], [7, "4737", "Ali Bader Salim Al Salami"], [8, "4797", "SARAH FAHAD DOOZ AL ZADJALI"], [8, "4816", "SAFA MARIR HUMAID AL HUMAIDHI"], [9, "4867", "ABDUL MALIK KHALID KHALFAN AL HAMDANI"], [10, "4873", "Ahmed Salim Rashid Al Riyami"], [10, "4875", "Marwa Abdullah Khalfan Al Wadhahi"], [11, "4962", "Maryam Sulaiyam Huwaishal Al Hinai"], [12, "4963", "Qabs Hamood Hamed Al Hinai"], [13, "4967", "Nasra Marzooq Bakhit Al Rahbi"], [14, "4981", "Aisha Jamal Hammad Al Zakwani"], [15, "5009", "Fajar Ahmed Said Al Nabhani"], [16, "5059", "Afnan Hamed Abdullah Al Khuzairi"], [16, "5194", "REHAB ALI ABDULLAH AL BALUSHI"], [17, "5218", "HOUDA JUMA SALIM AL-YAHYAAI"], [18, "5329", "ASSEL ADNAN AHMED AL RAWAHI"], [19, "5039", "RAYYAN KHALID MOHAMED AL MANDHARI"], [19, "5331", "MAY MOHAMED ABDULLAH AL MAHRUQI"], [20, "5464", "Sondus Anis Abdulla Al Jabri"], [21, "5465", "Ruaya Saif Khamis Al Harrasi"], [22, "5739", "Aisha Murad Lal Bakhsh Al Balushi"], [23, "5740", "Ibtehal Said Fraish Al Mahrizi"], [24, "6012", "NOOR ALI HAMED AL GHUFAILI"]]}, {"course": "Quantities Estimation II", "group": "Draftsman1-S6", "instructor": "حسن بن سعيد المعمري", "students": [[3, "4362", "BADER HAMED IBRAHIM AL-WAHAIBI"], [4, "4374", "SAUD HAMED SAUD AL WAHAIBI"], [5, "4532", "GHAITH KHALID NASSER ADIM AL HINAI"], [6, "4543", "NASEER SALIM NASSER AL JABRI"], [7, "4645", "Nasraa Saleh Said AL Siyabi"], [9, "4817", "ATHIR YAHYA MOHAMMED AL BATTASHI"], [11, "5016", "Yusra Saif Khalfan Al Rahbi"], [12, "5017", "Abrar Ahmed Said Al Rubkhi"], [13, "5018", "Hebah Zahir Hamed Zahir Al Bahri"], [14, "5169", "SAIF ALI MUBARIK HAMDAN AL SHUKRI"], [15, "5193", "MIQAT ALI HUMAID AL BATTASHI"], [17, "5372", "Al Zahra Said Juma Al Shuaili"]]}, {"course": "Practical", "group": "Paint & Decoration 21", "instructor": "حنان السعدية", "students": [[1, "24099", "NAGE HUMAID DARWISH AL SUBHI"], [2, "24100", "MUNDHER SALEH MOHAMED WALI MOHAMED AL BULUS"], [3, "24101", "HANI SAID ALI AL HATTAILI"], [4, "24103", "AIMAN SULAIMAN DARWISH AL ALAWI"], [5, "24104", "ABDULLAH MOHAMED ABDULLA AL BARWANI"], [6, "24105", "ANAS MALALLAH ABDULLAH AL BALUSHI"], [7, "24106", "ISMAIL IBRAHIM MOHAMED AL KINDI"], [8, "24107", "MOHAMMED SAIF HAMDAN AL YAHYAEI"], [9, "24108", "FAISAL SULAIMAN MOHAMMED AL MAASHARI"], [10, "24110", "AMJID KHAMIS KHALFAN ALI AL NAIRI"], [11, "24111", "SALMAN MOHAMMED SALMAN AL AMRANI"], [12, "24113", "ABDUL MOHSIN ABDALLAH FARAJ SAID AL HADHRAMI"], [13, "24115", "MATASAM MARHOON MUBARAK AL MALKI"]]}, {"course": "Technology", "group": "Paint & Decoration 21", "instructor": "حنان السعدية", "students": [[1, "24099", "NAGE HUMAID DARWISH AL SUBHI"], [2, "24100", "MUNDHER SALEH MOHAMED WALI MOHAMED AL BULUS"], [3, "24101", "HANI SAID ALI AL HATTAILI"], [4, "24103", "AIMAN SULAIMAN DARWISH AL ALAWI"], [5, "24104", "ABDULLAH MOHAMED ABDULLA AL BARWANI"], [6, "24105", "ANAS MALALLAH ABDULLAH AL BALUSHI"], [7, "24106", "ISMAIL IBRAHIM MOHAMED AL KINDI"], [8, "24107", "MOHAMMED SAIF HAMDAN AL YAHYAEI"], [9, "24108", "FAISAL SULAIMAN MOHAMMED AL MAASHARI"], [10, "24110", "AMJID KHAMIS KHALFAN ALI AL NAIRI"], [11, "24111", "SALMAN MOHAMMED SALMAN AL AMRANI"], [12, "24113", "ABDUL MOHSIN ABDALLAH FARAJ SAID AL HADHRAMI"], [13, "24115", "MATASAM MARHOON MUBARAK AL MALKI"]]}, {"course": "Architecture Presentation I", "group": "Draftsman2-S3", "instructor": "ديمه الشقصية", "students": [[1, "5066", "Wasila Khamis Said Al Husaini"], [2, "5088", "Humaid Thani Humaid Al Wahaibi"], [3, "5110", "Said Rashid Abdullah Al Hadi"], [4, "5156", "FARH ISEHAQ SAIF SULAIMAN AMBU-SAIDI"], [5, "5158", "Al Anood Saif Sultan Al Dhahori"], [6, "5298", "SHAIKHA NASSER SAID AL SAADI"], [7, "5303", "WAAEL AHMED ABDULLAH AL NASRI"], [8, "5503", "Wajdan Rashid Ali Al Sadi"], [9, "5987", "HAMZA ASAD MOHAMED AL-SIYABI"], [10, "5989", "RIHAM NASSER MUBARAK AL QUWAITII"], [11, "5990", "ASMAHAN BATI OTHMAN AL KIYUMI"], [12, "5991", "HAMED TALIB SALEH AL AWFI"], [13, "5993", "Aathar Nasser Khalfan Al Rawahi"], [14, "5994", "AHMED KHALFAN MANSOOR AL BAHLANI"], [15, "5995", "REDHA MAHMOOD YOUSUF AL MAIMANI"], [16, "6008", "FATMA AMJAD MOULA BAKHSH AL BALUSHI"], [17, "6332", "BAYAN AHMED SAID AL MAHMUDI"], [18, "6331", "SUNDUS SAIF HAMED AL GHUSAINI"]]}, {"course": "History of Architecture", "group": "Draftsman1-S1", "instructor": "ديمه الشقصية", "students": [[1, "5041", "Abdullah Hilal Hamood Al Amri"], [2, "5383", "Qusay Mohammed Salim Al-Subhi"], [3, "5391", "Ahmad Sulaiman Said Al-Hashmi"], [4, "5394", "Elyas Yahya Ali Al-Abri"], [4, "5626", "Hamed Ali Hamed Al Hasni"], [5, "5540", "Mmaryam Sultan Saleh Al Maqbali"], [6, "5592", "Moosa Mohamed Salim Al Sulaimi"], [7, "5594", "Zahir Khamis Said Al Sulaimi"], [8, "5600", "Mansoor Saif Mansoor Al Nafi"], [9, "5601", "Hamed Issa Saleh Al Haddabi"], [10, "5616", "Ammar Mohammed Omer Al Sulti"], [11, "5623", "Osama Yousuf Khalifa Al Kiyumi"], [13, "5694", "Raham Ibrahim Mohamed Al-Maharbi"], [14, "5695", "Shrooq Mahmood Salim Al Nabhani"], [15, "5696", "Wiaam Issa Ali Al Yahmedi"], [16, "5717", "Athkar Khalid Khalfan Al Almoot"], [17, "5769", "Abadah Nasser Issa Al Muharbi"], [18, "5771", "Yusuf Asim Yusuf Al Zadjali"], [18, "6331", "SUNDUS SAIF HAMED AL GHUSAINI"], [19, "5849", "Qasim Salim Masoud Al Riami"], [20, "5908", "Dareen Yahya Mubarak Al Qasmi"], [21, "5909", "Sundus Salim Said Al Bulushi"], [21, "6184", "Adil Jameel Salim Al Makhmari"], [21, "6328", "HOOR GHABISH MOHAMMED AL KHUDHURI"], [22, "5940", "AZAAN TALAL MOHAMED AL KHUWALDI"], [22, "6335", "AMJAD AHMED MOHAMED AL HARTHI"], [23, "5966", "AYSHA HARIB SAIF AL SHUKAILI"], [23, "6195", "Muhrah Ali Mur Al Majaali"], [23, "6336", "SALMAN SULAIMAN HAMOOD AL HASNI"]]}, {"course": "Architectural Working Drawing2", "group": "Draftsman1-S3", "instructor": "رامية العامرية", "students": [[1, "4950", "Faisal Fahad Mubarak Al Busaidi"], [2, "5077", "Al Mohanad Mohammed Sulaiman Al Baroumi"], [3, "5090", "Idrees Ali Abdullah Al Akhzami"], [4, "5101", "Nasir Abdullah Nasser Wadi"], [5, "5142", "AHMED SAID MUBARAK AL MUHARRAMI"], [6, "5186", "AMANI KHALFAN HAMED AL JULANDANI"], [7, "5282", "ALMARWA SALIM KHULAFIN AL JULANDANI"], [8, "5284", "RETAJ MUBARAK MOHAMED AL DUHANI"], [9, "5292", "ALIYAA KHAMIS KHASIB AL AAMRI"], [10, "5479", "Retaj Aiman Ahmed Al Jabri"], [11, "5482", "Al Mutasim Hamed Mohamed Al Hasni"], [12, "5493", "Maram Said Mohammed Al Hasani"], [13, "5730", "Tarteel Nasser Malallah Al Amri"], [14, "5988", "ALHUSSAIN ALI MUBARAK AL-WAHAIBI"], [15, "5992", "AL YAQIN SAID KHAFAN AL WADHAHI"], [16, "5997", "ANFAL KHALFAN NASSER AL MAAMRI"], [17, "6187", "Khalsa Amed Mohammed Al Rahbi"], [18, "6331", "SUNDUS SAIF HAMED AL GHUSAINI"]]}, {"course": "Project I (Residential Building)", "group": "Draftsman1-S5", "instructor": "رامية العامرية", "students": [[1, "4335", "AHMED SAIF AHMED AL-HARTHI"], [2, "4519", "MUSTAFA KHALIFA SULAIMAN AL-KHAZAAI"], [3, "4713", "Fatima Ahmed Darwish Al Amri"], [4, "4714", "Maimoona Mohammed Said Al Sheibani"], [5, "4715", "Ruba Hamed Salim Al Shaqsi"], [6, "4719", "Zahra Saif Sulaiman Ambusaidi"], [7, "4737", "Ali Bader Salim Al Salami"], [8, "4797", "SARAH FAHAD DOOZ AL ZADJALI"], [9, "4867", "ABDUL MALIK KHALID KHALFAN AL HAMDANI"], [10, "4873", "Ahmed Salim Rashid Al Riyami"], [11, "4962", "Maryam Sulaiyam Huwaishal Al Hinai"], [12, "4963", "Qabs Hamood Hamed Al Hinai"], [13, "4967", "Nasra Marzooq Bakhit Al Rahbi"], [14, "4981", "Aisha Jamal Hammad Al Zakwani"], [15, "5009", "Fajar Ahmed Said Al Nabhani"], [16, "5059", "Afnan Hamed Abdullah Al Khuzairi"], [17, "5218", "HOUDA JUMA SALIM AL-YAHYAAI"], [18, "5329", "ASSEL ADNAN AHMED AL RAWAHI"], [19, "5331", "MAY MOHAMED ABDULLAH AL MAHRUQI"], [20, "5464", "Sondus Anis Abdulla Al Jabri"], [21, "5465", "Ruaya Saif Khamis Al Harrasi"], [22, "5739", "Aisha Murad Lal Bakhsh Al Balushi"], [23, "5740", "Ibtehal Said Fraish Al Mahrizi"], [24, "6012", "NOOR ALI HAMED AL GHUFAILI"]]}, {"course": "Commercial Design", "group": "Design1-S4", "instructor": "سارة البلوشية", "students": [[1, "4739", "Emad Hamood Hamed Al Aamri"], [3, "4802", "JOHINA YOUNIS NASSER AL BATTASHI"], [4, "4886", "Duaa Mohamed Khamis Al Shuaibi"], [5, "4992", "Shahd Khalfan Amur Al Qasimi"], [6, "5165", "SHOMOOKH AHMED MAHFOODH SALIM AL RIYAMI"], [6, "5182", "GENAN IBRAHIM BASHIR AL HARTHI"], [7, "5317", "Azah Ahmed Ali Al Musallami"], [8, "5333", "MEERAH AHMED JUMA AL JABRI"], [8, "5743", "Israa Khamis Aamir Al-Ismaili"], [9, "5744", "Afiya Saleh 'Abdullah Al Maktoumi"], [10, "5747", "Al Muntasar Nasser Ahmed Al Busafi"], [11, "5745", "Meead Salim Saud Al Abri"]]}, {"course": "Graduation Project 1 ( Design )", "group": "Design1-S5", "instructor": "سارة البلوشية", "students": [[1, "4517", "SAEED ZAID SULTAN AL FARSI"], [2, "4649", "AL Aqhabis Khamis Saif AL-Shukail"], [3, "4685", "Abrar Saleem Rashid Al Hashimi"], [4, "4686", "Atheer Ali Said Al Batrani"], [5, "4688", "Esraa Said Khatim Al Abrawi"], [6, "4690", "Ghidaa Hamood Said Al-Omairi"], [7, "4695", "Maisaa Ali Salim Al Shekaili"], [8, "4696", "Maroa Masaaod Said Al-Shukaili"], [9, "4700", "Noor Juma Ali Al-Hadidi"], [10, "4706", "Taif Khalid Saud Al Hosni"], [11, "4747", "Omar Ayoub Abdullah Al Rawahi"], [12, "4754", "Ebtihal Ali Khamis Al Ghailani"], [13, "4760", "Yumna Sulaiman Sabeeh Al Sharji"], [14, "4799", "RAZAN ABDULLAH MUBARAK AL KHUSAIBI"], [15, "4810", "SHAHAD NASSER SAGHIR AL RUSHAIDI"], [16, "4844", "SAID HUMAID SAID AL SIYABI"], [17, "5054", "Hoor Ali Mohamed Al Zadjali"], [18, "5461", "Marya Zayid Yaqoub Al Harrasi"], [19, "5462", "Aisha Mohamed Said Al Jabri"], [20, "5463", "Hamdh Ali Khamis Al Maashari"], [21, "5504", "Wasaif Said Khalfan Al Saadi"]]}, {"course": "Drawing", "group": "Refrigeration 11", "instructor": "سعيد الجهضمي", "students": [[1, "25001", "AHMED SAID AL WAHAIBI"], [2, "25002", "ZAKARIYA AMIN DARWISH AL NABHANI"], [3, "25003", "ADAM SAID HUMAID AL BATTASHI"], [4, "25004", "AHMED SAID MOHAMED AL WAHAIBI"], [5, "25005", "SAMI MOHAMMED NASSER AL BATTASHI"], [6, "25006", "ABDULRAHMAN JUMA KHALFAN AL SHALI"], [7, "25007", "YAHYA SAIF YAHYA AL RASHDI"], [8, "25008", "LAITH DAWOOD SULAIMAN AL MUJAINI"], [9, "25009", "GHITHI HILAL MOHAMMED AL AAMMRI"], [10, "25010", "MUNTHER HAMED KHALFAN AWLAD THANI"], [11, "25011", "RADHAWAN HAYDER BIR MOHAMMED"], [12, "25012", "QUSAY JUMA LAHI AL SAADI"], [13, "25013", "MOHAMMED RABIA SALEH AL BREIKI"], [14, "25014", "UQAS HUMAID MOHAMMED AL OMAIRI"], [15, "25015", "AL-HUSAIN ALI ISSA AL RAHBI"], [16, "25016", "AZAAM SALEH KHALFAN AL AMRT"], [17, "25017", "SULAIMAN ABDULLAH SULAIMAN AL KIYIMI"], [18, "25018", "ALMUNJID KHALFAN MUSALLIM AL MAMARI"], [19, "25020", "BASHSHAR SAID OMAR AL BATTASHI"], [20, "25021", "MOHAMMED JUMA HAMDOON AL RUMAIMI"]]}, {"course": "Drawing", "group": "Welding 11", "instructor": "سعيد الجهضمي", "students": [[1, "25044", "IBRAHIM HILAL HAMED AL YAHYAI"], [2, "25045", "AHMED HUSSEN KHAMIS AL SALATI"], [3, "25046", "KHALID ALI MOHAMED AL RAWAHI"], [4, "25047", "Sajaad ALi MAHMOOD Al-ajmi"], [5, "25048", "ABDULLAH ALI ABDULLAH AL-MABSLI"], [6, "25049", "Majed taqi said al-amei"], [7, "25050", "Hamza SALIM KHAMIS AL HADIFI"], [8, "25051", "Ali said khalfan Al saudi"], [9, "25052", "ALMUAZ JUMA KHALIFA ALAMRI"], [10, "25053", "Ali Abdullah Sulaiyam ALNahdi"], [11, "25054", "Waeel Issa Mohammed Alharrasi"], [12, "25055", "Salim Mohamed Salim Al Harthi"], [13, "25056", "SALIM ALI SALIM AL SABHI"], [14, "25057", "Mazin Mansoor Mohammad Al Hassni"], [15, "25058", "MOHAMMED ABDULLAH SULAIMAN AL MAASHRI"], [16, "25059", "MOHSIN SALEH ZUWAID AL HASANI"], [17, "25060", "ABDUL RAHMAN TAQI OBAID KHADOOM"], [18, "25061", "ZAKRIYA IDREES SALIM AL MABSALI"], [19, "25062", "GHAITH FAHAD QADER BAKHSH AL RAISI"], [20, "25063", "AL MOATASIM MAHMOOD SALIM AL RAQQADI"], [21, "25065", "AMMAR YASIR HAMED AL BALUSHI"], [22, "25066", "QUSAY ASAD SULAIMAN AL SHUHOOMI"], [23, "25067", "AMRAN SAID ABDULLAHA KALIYABI"], [24, "25068", "MOHAMMED HUMAID SUWAID AL WAAILI"], [25, "25069", "SAOUD KHALFAN SALIM AL MABSALI"]]}, {"course": "Engineering Drawing2", "group": "Draw2-G4", "instructor": "سعيد الجهضمي", "students": [[1, "6105", "Saud Faisal Salim Al Bulushi"], [2, "6106", "Al Yaman Sulaiman Salim Al Fahdi"], [3, "6107", "Suleiman Saleh Suleiman Al Ismaili"], [4, "6108", "Mohammed Saud Mohamed Al Habsi"], [5, "6116", "Maryem Saud Saif Al Azri"], [6, "6117", "Bayan Ibrahim Said Al Harthi"], [7, "6118", "Maathir Mohammed Omair Al Rahbi"], [8, "6119", "Sharifa Ali Abdullah Al Jabri"], [9, "6120", "Aseel Abdullah Jasim Al Mushaifri"], [10, "6123", "Noha Malallah Juma Al Mashrafi"], [11, "6157", "Reem Hilal Mohamed Al Siyabi"], [12, "6158", "Sultan Said Mohamed Al Battashi"], [13, "6159", "Layan Soud Salim Al Hadhrami"], [14, "6160", "Al Azhar Ahmed Nasser Al-Rawahi"], [15, "6161", "Basma Saud Ali Al Barashdi"], [16, "6162", "Abdul Azeez Mohamed Salim Al Zaabi"]]}, {"course": "Engineering Drawing2", "group": "Draw2-G5", "instructor": "سعيد الجهضمي", "students": [[1, "6017", "Salim Saif Salim Al Jabri"], [2, "6109", "Rashid Ahmed Rashid Al Siyabi"], [3, "6110", "Omar Adnan Yasser Al-Rawahi"], [4, "6111", "Mohammed Marhoon Mabrook Al Naabi"], [5, "6112", "Hassaan Saif Ali Al Hasni"], [6, "6113", "Alaa Ahmed Ali Al Julandani"], [7, "6114", "Al Yazen Tariq Issa Al Amri"], [8, "6121", "Fatma Mohamed Khalfan Al Wahaibi"], [9, "6122", "Mawada Zahir Sulaiman Al Fahdi"], [10, "6124", "Maather Saleem Ali Al Jahdhami"], [11, "6125", "Zainab Mohamed Rashid Al Harthy"], [12, "6126", "Jawharah Mohamed Khamis Al Busaidi"], [13, "6127", "Nabaa Yousuf Khalfan Al Nadabi"], [14, "6138", "Laya Khalid Abdul Rahman Al Somali"], [15, "6163", "Suha Suhail Rasool Bakhs Al Balushi"], [16, "6165", "Balal Yaqoob Yousuf Bilal Al Balushi"], [17, "6166", "Weam Mohammed Khalfan Al Rahbi"]]}, {"course": "MEP I (Building services )", "group": "Draftsman1-S4", "instructor": "سعيد الجهضمي", "students": [[1, "4085", "Rawan Khamis Thani Al Rajibi"], [2, "4471", "Ahmed Awadh Sulaiyam Al Dawaoudi"], [3, "4603", "YOUSEF AHMED ABDULLAH MAHFOODH AL MASHRAFI"], [3, "4808", "LYAN RIYADH IBRAHIM AL WAHAIBI"], [4, "4884", "Maimana Mohammed Salim Al Jabri"], [5, "4885", "Shadha Khamis Khalfan Al Rahbi"], [6, "4887", "Fatima Nasser Mohammed Al Tubi"], [7, "4888", "Safiya Mahmood Said Al Riyami"], [8, "4889", "Sama Khalifa Saud Al Kasbi"], [9, "4890", "Arwa Sulaiman Said Al Siyabi"], [10, "4891", "Estbraq Waleed Salim Al Ghdani"], [11, "4893", "Raya Mohammed Masoud Al Subhi"], [12, "4953", "Yosif Ali Mohamed Al Nafaei"], [13, "4991", "Sara Saleh Hamdan Al Darmaki"], [14, "5004", "Suha Khalid Mohammed Bani Oraba"], [15, "5121", "Al Fardoos Mohammed Sulaiman Al Marshoudi"], [16, "5122", "Aysha Saleem Salim Al Abri"], [17, "5124", "Ryan Imad Mohamed Al Ajmi"], [18, "5125", "Sarah Ahmed Nasser Al Aufi"], [19, "5127", "Abdul Malik Abdullah Rashid AlSiyabi"], [20, "5160", "OMAR ALI KHASEIF AL MAMARI"], [21, "5177", "NOOR SALIM MOHAMMED AL HADHRAMI"], [22, "5178", "HOURA ALI NASSER AL-SHIBLI"], [23, "5184", "ZUWAINA HAMED NASSER AL MASKARI"], [24, "5311", "EILAF TALAL MOHAMED AL RAISI"], [25, "5315", "SARA MOOSA SALIM AL WAHIDI"], [27, "5781", "Rusul Hilal Hamad Al Khusaibi"], [28, "5996", "BRAAH KHALID YAQOOB AL MAHARBI"], [29, "5998", "BAYAN KHASIB MAHIL AL SULAIMI"], [30, "5999", "MAYTHAM SULAIMAN SAIF AL HINAI"], [31, "6000", "KHAWLA SAIF HAMAD AL AMRI"], [32, "6330", "WARDA MOHAMED SULAIMAN ALNUUMANI"]]}, {"course": "Computer for interior design 2", "group": "Design1-S4", "instructor": "سوسن العجمية", "students": [[1, "4739", "Emad Hamood Hamed Al Aamri"], [3, "4802", "JOHINA YOUNIS NASSER AL BATTASHI"], [4, "4886", "Duaa Mohamed Khamis Al Shuaibi"], [5, "4992", "Shahd Khalfan Amur Al Qasimi"], [6, "5165", "SHOMOOKH AHMED MAHFOODH SALIM AL RIYAMI"], [7, "5317", "Azah Ahmed Ali Al Musallami"], [8, "5743", "Israa Khamis Aamir Al-Ismaili"], [9, "5744", "Afiya Saleh 'Abdullah Al Maktoumi"], [10, "5747", "Al Muntasar Nasser Ahmed Al Busafi"], [12, "4754", "Ebtihal Ali Khamis Al Ghailani"]]}, {"course": "Graduation Project 2 ( Design )", "group": "Design1-S6", "instructor": "سوسن العجمية", "students": [[1, "4287", "HIND 'ABDULLAH NASSER AL NADHIRI"], [3, "4451", "Ali Mohammed Ali Al Mandhari"], [4, "4512", "SAFIYA HABIB MASAAOD AL-SAADI"], [5, "4516", "ADNAN ISSA SALIM AL GHAMMARI"], [6, "4530", "AHAD AMUR SULAIYAM AL ABRI"], [7, "4537", "KARRAR IBRAHIM MOHAMMED SALEEM AL-AJMI"], [8, "4539", "FAISEL HAMOOD SULAIMAN Abdullah AL KHARUSI"], [9, "4548", "HAYDA SAIF MOHAMMED AL WAHIBI"], [10, "4573", "HAJIR RASHID SALIM MARHOUN AL JABRI"], [11, "4578", "MUNA RASHID NASSER SALEEM AL NADHIRI"], [12, "4584", "ASRAR SAIF KHALAF SAIF AL-AGHBARI"], [13, "4678", "Thuwaiba Mohammed Gharib Al Hattali"], [14, "4761", "Athari Ali Said Nasser Al Nabi"], [15, "4770", "Humaid Ahmed Humaid Al-Jahdhami"], [16, "4862", "HAMZAH YOUSUF MUHANNA SAID AL AZAWANI"], [17, "5208", "SOMMYA SULEYUM SALIM AL MAHRUQI"], [18, "5353", "ASMA KHALAF KHALFAN AL AMRI"], [19, "5354", "MARYA ALI SAID AL MAZROUAI"], [20, "6001", "SHAYMAA AHMED SALIM AL HINAI"]]}, {"course": "Architectural Working Drawing1", "group": "Draftsman1-S2", "instructor": "صبا الزدجالية", "students": [[1, "5295", "AYMAN MOHAMED SULAIMAN AL RASHDI"], [2, "5376", "Narjes Mohammed Salim Al-Qarwashi"], [3, "5377", "Abeer Hatm Khalfan Al-Hadidi"], [4, "5384", "Maha Abdulhakeem Abdullah Al-Farsi"], [5, "5385", "Fatima Issa Said Al-Nadhiri"], [6, "5388", "Raghad Saif Said Al-Rashdi"], [7, "5389", "Al-Nuha Rashid Saif Al-Suti"], [8, "5390", "Zaynab Yousuf Salim Al-Jabri"], [9, "5392", "Al-Gaidaa Saif Ali Al-Hasni"], [10, "5398", "Fajir Adil Ahmed Al-Hadi"], [11, "5409", "Danah Sulaiman Dawood Al-Balushi"], [12, "5416", "Ruqiya Rashid Salim Al-Siyabi"], [13, "5473", "Salwa Abdullah Saleem Al Jahhafi"], [14, "5718", "Aminah Khalfan Amor Al Naabi"], [15, "5719", "Mram Abdullah Ali Al Shibli"], [16, "5748", "Eyad Munir Ayil Al Amri"], [17, "5957", "AL YAQEEN TALIB SAID AL SIYABI"], [18, "5958", "RAWAN NASSER KHALFAN AL BUSAFI"], [19, "5962", "MIRAJ ASAD RAMADHAN AL BALUSHI"], [20, "6182", "Shadha Said Ali Al Rawahi"], [21, "6184", "Adil Jameel Salim Al Makhmari"], [22, "6185", "Saja Salim Juma Al Siyabi"], [23, "6195", "Muhrah Ali Mur Al Majaali"]]}, {"course": "Architectural Working Drawing1", "group": "Draftsman2-S2", "instructor": "صبا الزدجالية", "students": [[1, "5064", "Al Baraah Mahmood Salim Al Subhi"], [2, "5648", "Rawan Marhoon Sabah Al-Badri"], [3, "5650", "Salma Said Mohamed Al Jardani"], [4, "5651", "Maather Harith Juma Al Amri"], [5, "5652", "Laila Riyadh Mattar Al Arimi"], [6, "5653", "Rana Salim Harith Al Rawahi"], [7, "5654", "Safa Mohammed Khalaf Al Subhi"], [8, "5655", "Rahma Said Khamis Al Hinai"], [9, "5656", "Rataj Sulaiman Hamood Al Sarkhi"], [10, "5657", "Mariam Aman Allah Mohammed Al Balushi"], [11, "5658", "Naeema Sultan Mohammed Al Aamri"], [12, "5659", "Hajar Ali Ayil Al Julandani"], [13, "5687", "Majd Mohamed Sulaiman Al Badri"], [14, "5715", "Samaa Talal Nabahan Al Nabhani"], [15, "5720", "Abrar Muhanna Khalaf Al Abdali"], [16, "6183", "Almunthir Majid Saif Al Siybi"], [17, "6186", "Abdullh Salim Ahmed Al Sheibani"], [18, "6329", "AYISHA MUBARAK SALIM AL HINAI"]]}, {"course": "Building Technology", "group": "Draftsman1-S1", "instructor": "محمد البطاشي", "students": [[1, "5041", "Abdullah Hilal Hamood Al Amri"], [2, "5383", "Qusay Mohammed Salim Al-Subhi"], [3, "5391", "Ahmad Sulaiman Said Al-Hashmi"], [4, "5394", "Elyas Yahya Ali Al-Abri"], [4, "5626", "Hamed Ali Hamed Al Hasni"], [5, "5540", "Mmaryam Sultan Saleh Al Maqbali"], [6, "5592", "Moosa Mohamed Salim Al Sulaimi"], [7, "5594", "Zahir Khamis Said Al Sulaimi"], [8, "5600", "Mansoor Saif Mansoor Al Nafi"], [9, "5601", "Hamed Issa Saleh Al Haddabi"], [10, "5616", "Ammar Mohammed Omer Al Sulti"], [11, "5623", "Osama Yousuf Khalifa Al Kiyumi"], [13, "5694", "Raham Ibrahim Mohamed Al-Maharbi"], [14, "5695", "Shrooq Mahmood Salim Al Nabhani"], [15, "5696", "Wiaam Issa Ali Al Yahmedi"], [16, "5717", "Athkar Khalid Khalfan Al Almoot"], [17, "5769", "Abadah Nasser Issa Al Muharbi"], [18, "5771", "Yusuf Asim Yusuf Al Zadjali"], [19, "5849", "Qasim Salim Masoud Al Riami"], [20, "5908", "Dareen Yahya Mubarak Al Qasmi"], [21, "5909", "Sundus Salim Said Al Bulushi"], [21, "6328", "HOOR GHABISH MOHAMMED AL KHUDHURI"], [22, "5940", "AZAAN TALAL MOHAMED AL KHUWALDI"], [22, "6335", "AMJAD AHMED MOHAMED AL HARTHI"], [23, "5966", "AYSHA HARIB SAIF AL SHUKAILI"], [23, "6336", "SALMAN SULAIMAN HAMOOD AL HASNI"]]}, {"course": "Computer Applications in Architecture", "group": "Draftsman1-S4", "instructor": "هشام المعولي", "students": [[1, "4085", "Rawan Khamis Thani Al Rajibi"], [2, "4471", "Ahmed Awadh Sulaiyam Al Dawaoudi"], [3, "4808", "LYAN RIYADH IBRAHIM AL WAHAIBI"], [4, "4884", "Maimana Mohammed Salim Al Jabri"], [5, "4885", "Shadha Khamis Khalfan Al Rahbi"], [6, "4887", "Fatima Nasser Mohammed Al Tubi"], [7, "4888", "Safiya Mahmood Said Al Riyami"], [8, "4889", "Sama Khalifa Saud Al Kasbi"], [9, "4890", "Arwa Sulaiman Said Al Siyabi"], [10, "4891", "Estbraq Waleed Salim Al Ghdani"], [11, "4893", "Raya Mohammed Masoud Al Subhi"], [12, "4953", "Yosif Ali Mohamed Al Nafaei"], [13, "4991", "Sara Saleh Hamdan Al Darmaki"], [14, "5004", "Suha Khalid Mohammed Bani Oraba"], [15, "5121", "Al Fardoos Mohammed Sulaiman Al Marshoudi"], [16, "5122", "Aysha Saleem Salim Al Abri"], [17, "5124", "Ryan Imad Mohamed Al Ajmi"], [18, "5125", "Sarah Ahmed Nasser Al Aufi"], [19, "5127", "Abdul Malik Abdullah Rashid AlSiyabi"], [20, "5160", "OMAR ALI KHASEIF AL MAMARI"], [21, "5177", "NOOR SALIM MOHAMMED AL HADHRAMI"], [22, "5178", "HOURA ALI NASSER AL-SHIBLI"], [23, "5184", "ZUWAINA HAMED NASSER AL MASKARI"], [24, "5311", "EILAF TALAL MOHAMED AL RAISI"], [25, "5315", "SARA MOOSA SALIM AL WAHIDI"], [27, "5781", "Rusul Hilal Hamad Al Khusaibi"], [28, "5996", "BRAAH KHALID YAQOOB AL MAHARBI"], [29, "5998", "BAYAN KHASIB MAHIL AL SULAIMI"], [30, "5999", "MAYTHAM SULAIMAN SAIF AL HINAI"], [31, "6000", "KHAWLA SAIF HAMAD AL AMRI"], [32, "6330", "WARDA MOHAMED SULAIMAN ALNUUMANI"]]}, {"course": "Reinforced Concrete Drawing", "group": "Draftsman1-S4", "instructor": "هشام المعولي", "students": [[1, "4085", "Rawan Khamis Thani Al Rajibi"], [2, "4471", "Ahmed Awadh Sulaiyam Al Dawaoudi"], [3, "4808", "LYAN RIYADH IBRAHIM AL WAHAIBI"], [4, "4884", "Maimana Mohammed Salim Al Jabri"], [5, "4885", "Shadha Khamis Khalfan Al Rahbi"], [6, "4887", "Fatima Nasser Mohammed Al Tubi"], [7, "4888", "Safiya Mahmood Said Al Riyami"], [8, "4889", "Sama Khalifa Saud Al Kasbi"], [9, "4890", "Arwa Sulaiman Said Al Siyabi"], [10, "4891", "Estbraq Waleed Salim Al Ghdani"], [11, "4893", "Raya Mohammed Masoud Al Subhi"], [12, "4953", "Yosif Ali Mohamed Al Nafaei"], [13, "4991", "Sara Saleh Hamdan Al Darmaki"], [14, "5004", "Suha Khalid Mohammed Bani Oraba"], [15, "5121", "Al Fardoos Mohammed Sulaiman Al Marshoudi"], [16, "5122", "Aysha Saleem Salim Al Abri"], [17, "5124", "Ryan Imad Mohamed Al Ajmi"], [18, "5125", "Sarah Ahmed Nasser Al Aufi"], [19, "5127", "Abdul Malik Abdullah Rashid AlSiyabi"], [20, "5160", "OMAR ALI KHASEIF AL MAMARI"], [21, "5177", "NOOR SALIM MOHAMMED AL HADHRAMI"], [22, "5178", "HOURA ALI NASSER AL-SHIBLI"], [23, "5184", "ZUWAINA HAMED NASSER AL MASKARI"], [24, "5311", "EILAF TALAL MOHAMED AL RAISI"], [25, "5315", "SARA MOOSA SALIM AL WAHIDI"], [26, "5369", "ETHAR NABIL ABDULLAH AL HADI"], [27, "5781", "Rusul Hilal Hamad Al Khusaibi"], [28, "5996", "BRAAH KHALID YAQOOB AL MAHARBI"], [29, "5998", "BAYAN KHASIB MAHIL AL SULAIMI"], [30, "5999", "MAYTHAM SULAIMAN SAIF AL HINAI"], [31, "6000", "KHAWLA SAIF HAMAD AL AMRI"], [32, "6330", "WARDA MOHAMED SULAIMAN ALNUUMANI"]]}, {"course": "Architectural Working Drawing2", "group": "Draftsman2-S3", "instructor": "هند النزواني", "students": [[1, "5066", "Wasila Khamis Said Al Husaini"], [2, "5088", "Humaid Thani Humaid Al Wahaibi"], [3, "5110", "Said Rashid Abdullah Al Hadi"], [4, "5156", "FARH ISEHAQ SAIF SULAIMAN AMBU-SAIDI"], [5, "5158", "Al Anood Saif Sultan Al Dhahori"], [6, "5298", "SHAIKHA NASSER SAID AL SAADI"], [7, "5303", "WAAEL AHMED ABDULLAH AL NASRI"], [8, "5503", "Wajdan Rashid Ali Al Sadi"], [9, "5987", "HAMZA ASAD MOHAMED AL-SIYABI"], [10, "5989", "RIHAM NASSER MUBARAK AL QUWAITII"], [11, "5990", "ASMAHAN BATI OTHMAN AL KIYUMI"], [12, "5991", "HAMED TALIB SALEH AL AWFI"], [13, "5993", "Aathar Nasser Khalfan Al Rawahi"], [14, "5994", "AHMED KHALFAN MANSOOR AL BAHLANI"], [15, "5995", "REDHA MAHMOOD YOUSUF AL MAIMANI"], [16, "6008", "FATMA AMJAD MOULA BAKHSH AL BALUSHI"], [17, "6332", "BAYAN AHMED SAID AL MAHMUDI"]]}, {"course": "Drawing", "group": "Paint & Decoration 21", "instructor": "هند النزواني", "students": [[1, "24099", "NAGE HUMAID DARWISH AL SUBHI"], [2, "24100", "MUNDHER SALEH MOHAMED WALI MOHAMED AL BULUS"], [3, "24101", "HANI SAID ALI AL HATTAILI"], [4, "24103", "AIMAN SULAIMAN DARWISH AL ALAWI"], [5, "24104", "ABDULLAH MOHAMED ABDULLA AL BARWANI"], [6, "24105", "ANAS MALALLAH ABDULLAH AL BALUSHI"], [7, "24106", "ISMAIL IBRAHIM MOHAMED AL KINDI"], [8, "24107", "MOHAMMED SAIF HAMDAN AL YAHYAEI"], [9, "24108", "FAISAL SULAIMAN MOHAMMED AL MAASHARI"], [10, "24110", "AMJID KHAMIS KHALFAN ALI AL NAIRI"], [11, "24111", "SALMAN MOHAMMED SALMAN AL AMRANI"], [12, "24113", "ABDUL MOHSIN ABDALLAH FARAJ SAID AL HADHRAMI"], [13, "24115", "MATASAM MARHOON MUBARAK AL MALKI"]]}, {"course": "Drawing", "group": "Paint & Decoration 22", "instructor": "هند النزواني", "students": [[1, "24120", "AL WALEED DHAWI MALIH AL SUBHI"], [2, "24121", "NASER KHALIFA DARWISH AYLI AL SUBHI"], [3, "24123", "WASIM HUMAID MOULADAD AL BULUSHI"], [4, "24124", "ABDULIAH SULAIMAN DARWISH AL ALAWI"], [5, "24125", "AWF MURAD SHAMBEH AL BALUSHI"], [6, "24127", "MOHAMED ABDULLAH ZAID AL NAABI"], [7, "24131", "MAHDI ABDULLAH ALI FAKEER AL HARRASI"], [8, "24134", "SALIM ABDULLAH THANI AL MAHARBI"], [9, "24135", "AZZAN SAUD ABDUL AZIZ AL RAISI"]]}, {"course": "Engineering Drawing2", "group": "Draw2-G3", "instructor": "هند النزواني", "students": [[1, "5449", "Al-Julanda Amir Said Al-Badri"], [2, "5551", "Toqa Ali Abdullah Al Salmi"], [3, "5558", "Mahmood Khalid Mahmood Al Zadjali"], [4, "5626", "Hamed Ali Hamed Al Hasni"], [5, "5768", "Ibrahim Saif Hamoud Al Syabi"], [6, "5865", "Lama Mohamed Abdulla Al Balushi"], [7, "5876", "Taif Khalifa Ali Al Busaidi"], [8, "5877", "Malak Ahmed Mohammed Al Nadabi"], [9, "5878", "Sara Ahmed Saif Al Akhzami"], [10, "5880", "Hoor Ahmed Hamed Al Rawahi"], [11, "5881", "Shikha Abdullah Muhameed Al Aamri"], [12, "5883", "Hour Sulaiman Mohammed Al Shamsi"], [13, "5907", "Saud Idress Khalfan Al Hawasi"], [14, "5934", "NASAR SAID HEDEB AL HAKMANI"], [15, "5936", "ABDUL HAKIM NASEER HAMED AL DAWOUDI"], [16, "6006", "Meeqat Abdullah Hussain Al Balushi"], [17, "6135", "Mawada Ahmed Ismail Al Bulushi"], [18, "6199", "Raghad Salim Abdullah Al Rawahi"], [19, "6200", "Ahmed Salim Mansoor Al Manji"], [20, "6326", "Alyas Ismail Sulaiman Al Harrasi"], [21, "6328", "HOOR GHABISH MOHAMMED AL KHUDHURI"], [22, "6335", "AMJAD AHMED MOHAMED AL HARTHI"], [23, "6336", "SALMAN SULAIMAN HAMOOD AL HASNI"]]}, {"course": "Quantity survey", "group": "Design1-S5", "instructor": "هند النزواني", "students": [[1, "4517", "SAEED ZAID SULTAN AL FARSI"], [2, "4649", "AL Aqhabis Khamis Saif AL-Shukail"], [3, "4685", "Abrar Saleem Rashid Al Hashimi"], [4, "4686", "Atheer Ali Said Al Batrani"], [5, "4688", "Esraa Said Khatim Al Abrawi"], [6, "4690", "Ghidaa Hamood Said Al-Omairi"], [7, "4695", "Maisaa Ali Salim Al Shekaili"], [8, "4696", "Maroa Masaaod Said Al-Shukaili"], [9, "4700", "Noor Juma Ali Al-Hadidi"], [10, "4706", "Taif Khalid Saud Al Hosni"], [11, "4747", "Omar Ayoub Abdullah Al Rawahi"], [12, "4754", "Ebtihal Ali Khamis Al Ghailani"], [13, "4760", "Yumna Sulaiman Sabeeh Al Sharji"], [14, "4799", "RAZAN ABDULLAH MUBARAK AL KHUSAIBI"], [15, "4810", "SHAHAD NASSER SAGHIR AL RUSHAIDI"], [16, "4844", "SAID HUMAID SAID AL SIYABI"], [17, "5054", "Hoor Ali Mohamed Al Zadjali"], [18, "5461", "Marya Zayid Yaqoub Al Harrasi"], [19, "5462", "Aisha Mohamed Said Al Jabri"], [20, "5463", "Hamdh Ali Khamis Al Maashari"], [21, "5504", "Wasaif Said Khalfan Al Saadi"]]}, {"course": "Arch. Models", "group": "Design1-S6", "instructor": "يوسف الكلباني", "students": [[1, "4287", "HIND 'ABDULLAH NASSER AL NADHIRI"], [2, "4300", "KHAWLA HILAL SAUD AL-NAABI"], [3, "4451", "Ali Mohammed Ali Al Mandhari"], [4, "4512", "SAFIYA HABIB MASAAOD AL-SAADI"], [5, "4516", "ADNAN ISSA SALIM AL GHAMMARI"], [6, "4530", "AHAD AMUR SULAIYAM AL ABRI"], [7, "4537", "KARRAR IBRAHIM MOHAMMED SALEEM AL-AJMI"], [8, "4539", "FAISEL HAMOOD SULAIMAN Abdullah AL KHARUSI"], [9, "4548", "HAYDA SAIF MOHAMMED AL WAHIBI"], [10, "4573", "HAJIR RASHID SALIM MARHOUN AL JABRI"], [11, "4578", "MUNA RASHID NASSER SALEEM AL NADHIRI"], [12, "4584", "ASRAR SAIF KHALAF SAIF AL-AGHBARI"], [13, "4678", "Thuwaiba Mohammed Gharib Al Hattali"], [14, "4761", "Athari Ali Said Nasser Al Nabi"], [15, "4770", "Humaid Ahmed Humaid Al-Jahdhami"], [16, "4862", "HAMZAH YOUSUF MUHANNA SAID AL AZAWANI"], [17, "5208", "SOMMYA SULEYUM SALIM AL MAHRUQI"], [18, "5353", "ASMA KHALAF KHALFAN AL AMRI"], [19, "5354", "MARYA ALI SAID AL MAZROUAI"], [20, "6001", "SHAYMAA AHMED SALIM AL HINAI"]]}, {"course": "Architectural Workshop", "group": "Draftsman1-S6", "instructor": "يوسف الكلباني", "students": [[1, "3709", "Rayan Salim Saif Al Habsi"], [2, "4213", "Wadhha Khamis Saleem Al Asakari"], [3, "4362", "BADER HAMED IBRAHIM AL-WAHAIBI"], [4, "4374", "SAUD HAMED SAUD AL WAHAIBI"], [5, "4532", "GHAITH KHALID NASSER ADIM AL HINAI"], [6, "4543", "NASEER SALIM NASSER AL JABRI"], [7, "4645", "Nasraa Saleh Said AL Siyabi"], [8, "4816", "SAFA MARIR HUMAID AL HUMAIDHI"], [9, "4817", "ATHIR YAHYA MOHAMMED AL BATTASHI"], [10, "4875", "Marwa Abdullah Khalfan Al Wadhahi"], [11, "5016", "Yusra Saif Khalfan Al Rahbi"], [12, "5017", "Abrar Ahmed Said Al Rubkhi"], [13, "5018", "Hebah Zahir Hamed Zahir Al Bahri"], [14, "5169", "SAIF ALI MUBARIK HAMDAN AL SHUKRI"], [15, "5193", "MIQAT ALI HUMAID AL BATTASHI"], [16, "5194", "REHAB ALI ABDULLAH AL BALUSHI"], [17, "5372", "Al Zahra Said Juma Al Shuaili"]]}];
+const INSTRUCTORS = ["أماني الحارثية", "أمل الفارسية", "أمير النعيمي", "أميرة العميرية", "إيمان العفانية", "بدور الصمصامية", "بدور المعولية", "حسن بن سعيد المعمري", "حنان السعدية", "ديمه الشقصية", "رامية العامرية", "سارة البلوشية", "سعيد الجهضمي", "سوسن العجمية", "صبا الزدجالية", "محمد البطاشي", "هشام المعولي", "هند النزواني", "يوسف الكلباني"];
+
+let currentIndex = -1;
+let marksData = {};
+let filteredIndices = [];
+
+function init() {
+  loadFromStorage();
+  populateInstructorFilter();
+  populateAnalysisSelect();
+  buildGroupList();
+  renderDashboard();
+  if (GROUPS_DATA.length > 0) selectGroup(0);
+}
+
+function saveToStorage() {
+  try { localStorage.setItem('marksData', JSON.stringify(marksData)); } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const saved = localStorage.getItem('marksData');
+    if (saved) { const parsed = JSON.parse(saved); if (typeof parsed === 'object' && !Array.isArray(parsed)) { marksData = parsed; return; } }
+  } catch(e) {}
+  initMarksData();
+}
+
+function initMarksData() {
+  marksData = {};
+  GROUPS_DATA.forEach((g, i) => {
+    marksData[i] = {};
+    g.students.forEach((s, si) => {
+      marksData[i][si+'_q1'] = ''; marksData[i][si+'_q2'] = '';
+      marksData[i][si+'_a1'] = ''; marksData[i][si+'_a2'] = '';
+      marksData[i][si+'_mid'] = '';
+    });
+    marksData[i]['max_q1'] = 10; marksData[i]['max_q2'] = 10;
+    marksData[i]['max_a1'] = 15; marksData[i]['max_a2'] = 15; marksData[i]['max_mid'] = 50;
+  });
+}
+
+// Tab switching
+let currentTab = 'sheets';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  document.querySelector('.nav-tab[data-tab="'+tab+'"]').classList.add('active');
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'analysis') renderAnalysis();
+}
+
+// Instructor filter
+function populateInstructorFilter() {
+  const sel = document.getElementById('instructorFilter');
+  INSTRUCTORS.forEach(inst => { const o = document.createElement('option'); o.value = inst; o.textContent = inst; sel.appendChild(o); });
+}
+
+function filterByInstructor() { buildGroupList(); }
+function filterGroups() { buildGroupList(); }
+
+function buildGroupList() {
+  const list = document.getElementById('groupList');
+  const searchQ = document.getElementById('searchInput').value.toLowerCase();
+  const instFilter = document.getElementById('instructorFilter').value;
+  list.innerHTML = '';
+  filteredIndices = [];
+  GROUPS_DATA.forEach((g, i) => {
+    if (instFilter && g.instructor !== instFilter) return;
+    const searchText = (g.group+' '+g.course+' '+g.instructor).toLowerCase();
+    if (searchQ && !searchText.includes(searchQ)) return;
+    filteredIndices.push(i);
+    const div = document.createElement('div');
+    div.className = 'group-item';
+    div.dataset.index = i;
+    div.innerHTML = '<strong>'+escHtml(g.group)+'</strong><br><small>'+escHtml(g.course)+'</small><span class="badge">'+g.students.length+'</span>';
+    div.onclick = function() { selectGroup(i); };
+    list.appendChild(div);
+  });
+  if (filteredIndices.includes(currentIndex)) {
+    document.querySelectorAll('.group-item').forEach(el => { if (parseInt(el.dataset.index) === currentIndex) el.classList.add('active'); });
+  }
+}
+
+// ============ MARKS SHEETS ============
+function selectGroup(idx) {
+  currentIndex = idx;
+  document.querySelectorAll('.group-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.group-item').forEach(el => { if (parseInt(el.dataset.index) === idx) el.classList.add('active'); });
+  renderSheet(idx);
+}
+
+function renderSheet(idx) {
+  const g = GROUPS_DATA[idx];
+  const main = document.getElementById('mainContent');
+  const m = marksData[idx] || {};
+  let html = '<div class="sheet-title">'+escHtml(g.course)+'</div>';
+  html += '<div class="sheet-subtitle">Group: <strong>'+escHtml(g.group)+'</strong> &nbsp;|&nbsp; Instructor: <strong>'+escHtml(g.instructor||'___________')+'</strong></div>';
+  html += '<div class="sheet-controls no-print">';
+  html += '<button onclick="exportCSV('+idx+')">Export CSV</button>';
+  html += '<button onclick="window.print()">Print</button>';
+  html += '<button class="danger" onclick="resetMarks('+idx+')">Clear Marks</button></div>';
+
+  html += '<table><thead><tr>';
+  html += '<th style="width:38px">S#</th><th style="width:85px">ID</th><th style="width:280px">Name</th>';
+  html += '<th>Quiz 1</th><th>Quiz 2</th><th>Assignment 1</th><th>Assignment 2</th><th>Midterm</th><th style="width:65px">Total</th>';
+  html += '</tr></thead><tbody>';
+
+  // Max marks row
+  html += '<tr class="max-row"><td colspan="3" class="max-label">Max Marks (editable below)</td>';
+  html += '<td><input class="mark-input" type="number" min="0" max="200" value="'+(m.max_q1||10)+'" onchange="updateMax('+idx+','q1',this.value)"></td>';
+  html += '<td><input class="mark-input" type="number" min="0" max="200" value="'+(m.max_q2||10)+'" onchange="updateMax('+idx+','q2',this.value)"></td>';
+  html += '<td><input class="mark-input" type="number" min="0" max="200" value="'+(m.max_a1||15)+'" onchange="updateMax('+idx+','a1',this.value)"></td>';
+  html += '<td><input class="mark-input" type="number" min="0" max="200" value="'+(m.max_a2||15)+'" onchange="updateMax('+idx+','a2',this.value)"></td>';
+  html += '<td><input class="mark-input" type="number" min="0" max="200" value="'+(m.max_mid||50)+'" onchange="updateMax('+idx+','mid',this.value)"></td>';
+  var maxTotal = (parseFloat(m.max_q1)||10)+(parseFloat(m.max_q2)||10)+(parseFloat(m.max_a1)||15)+(parseFloat(m.max_a2)||15)+(parseFloat(m.max_mid)||50);
+  html += '<td class="total-cell">'+maxTotal+'</td></tr>';
+
+  // Student rows
+  var fields = ['q1','q2','a1','a2','mid'];
+  var totals = {q1:0,q2:0,a1:0,a2:0,mid:0,all:0};
+
+  g.students.forEach(function(s, si) {
+    var vals = fields.map(function(f) { return parseFloat(m[si+'_'+f]) || 0; });
+    var total = vals[0]+vals[1]+vals[2]+vals[3]+vals[4];
+    totals.q1 += vals[0]; totals.q2 += vals[1]; totals.a1 += vals[2]; totals.a2 += vals[3]; totals.mid += vals[4]; totals.all += total;
+    html += '<tr><td>'+s[0]+'</td><td>'+s[1]+'</td><td class="name-col">'+escHtml(s[2])+'</td>';
+    fields.forEach(function(f, fi) {
+      html += '<td><input class="mark-input" type="number" min="0" max="200" value="'+(m[si+'_'+f]||'')+'" onchange="updateMark('+idx+','+si+',''+f+'',this.value)"></td>';
+    });
+    html += '<td class="total-cell">'+total+'</td></tr>';
+  });
+
+  // Totals row
+  html += '<tr class="total-row"><td colspan="3">Total Marks</td>';
+  html += '<td>'+totals.q1+'</td><td>'+totals.q2+'</td><td>'+totals.a1+'</td><td>'+totals.a2+'</td><td>'+totals.mid+'</td><td>'+totals.all+'</td></tr>';
+  html += '</tbody></table>';
+
+  // Footer
+  html += '<div class="footer-section">';
+  html += '<div class="sig-row"><span>Student Signature: <span class="sig-line"></span></span><span>Date: ___________</span></div>';
+  html += '<div class="sig-row"><span>Instructor Signature: <span class="sig-line">'+escHtml(g.instructor)+'</span></span><span>H.O.D Signature: <span class="sig-line"></span></span></div>';
+  html += '</div>';
+
+  main.innerHTML = html;
+}
+
+function updateMark(idx, si, field, val) {
+  marksData[idx][si+'_'+field] = val;
+  saveToStorage();
+  renderSheet(idx);
+}
+
+function updateMax(idx, field, val) {
+  marksData[idx]['max_'+field] = val;
+  saveToStorage();
+  renderSheet(idx);
+}
+
+function resetMarks(idx) {
+  if (!confirm('Clear all marks for this group?')) return;
+  var g = GROUPS_DATA[idx];
+  g.students.forEach(function(s, si) {
+    marksData[idx][si+'_q1'] = ''; marksData[idx][si+'_q2'] = '';
+    marksData[idx][si+'_a1'] = ''; marksData[idx][si+'_a2'] = ''; marksData[idx][si+'_mid'] = '';
+  });
+  saveToStorage();
+  renderSheet(idx);
+}
+
+function exportCSV(idx) {
+  var g = GROUPS_DATA[idx]; var m = marksData[idx];
+  var csv = 'S#,ID,Name,Quiz 1,Quiz 2,Assignment 1,Assignment 2,Midterm,Total\n';
+  g.students.forEach(function(s, si) {
+    var vals = ['q1','q2','a1','a2','mid'].map(function(f) { return parseFloat(m[si+'_'+f]) || 0; });
+    var total = vals[0]+vals[1]+vals[2]+vals[3]+vals[4];
+    csv += s[0]+','+s[1]+',"'+s[2]+'",'+vals[0]+','+vals[1]+','+vals[2]+','+vals[3]+','+vals[4]+','+total+'\n';
+  });
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url;
+  a.download = g.group.replace(/[^a-z0-9]/gi,'_')+'_marks.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ============ DASHBOARD ============
+function renderDashboard() {
+  var totalGroups = GROUPS_DATA.length;
+  var totalStudents = 0, totalFilled = 0, totalCells = 0;
+  var groupStats = [];
+  var fields = ['q1','q2','a1','a2','mid'];
+
+  GROUPS_DATA.forEach(function(g, i) {
+    var m = marksData[i] || {};
+    var filled = 0; var total = g.students.length * 5;
+    g.students.forEach(function(s, si) {
+      fields.forEach(function(f) { var v = m[si+'_'+f]; if (v !== undefined && v !== null && v !== '') filled++; });
+    });
+    var pct = total > 0 ? Math.round(filled/total*100) : 0;
+    totalStudents += g.students.length; totalFilled += filled; totalCells += total;
+    groupStats.push({i:i, g:g, filled:filled, total:total, pct:pct});
+  });
+
+  var overallPct = totalCells > 0 ? Math.round(totalFilled/totalCells*100) : 0;
+
+  document.getElementById('dashStats').innerHTML =
+    '<div class="stat-card"><div class="stat-num">'+totalGroups+'</div><div class="stat-label">Total Groups</div></div>'+
+    '<div class="stat-card"><div class="stat-num">'+totalStudents+'</div><div class="stat-label">Total Students</div></div>'+
+    '<div class="stat-card"><div class="stat-num">'+totalFilled+' / '+totalCells+'</div><div class="stat-label">Marks Entered</div></div>'+
+    '<div class="stat-card"><div class="stat-num">'+overallPct+'%</div><div class="stat-label">Overall Completion</div></div>';
+
+  var phtml = '<h3 style="margin-bottom:12px;color:#1a3a5c">Progress per Group</h3>';
+  groupStats.sort(function(a,b) { return a.pct - b.pct; });
+  groupStats.forEach(function(ps) {
+    var cls = ps.pct < 25 ? 'low' : ps.pct < 50 ? 'medium' : ps.pct < 75 ? 'good' : '';
+    phtml += '<div class="progress-container"><div class="progress-group">'+
+      '<div class="pg-info"><strong>'+escHtml(ps.g.group)+'</strong><small>'+escHtml(ps.g.course)+'</small></div>'+
+      '<div class="progress-bar-wrap"><div class="progress-bar-fill '+cls+'" style="width:'+ps.pct+'%"></div></div>'+
+      '<div class="progress-pct">'+ps.pct+'%</div></div></div>';
+  });
+  document.getElementById('dashProgress').innerHTML = phtml;
+}
+
+// ============ ANALYSIS ============
+function populateAnalysisSelect() {
+  var sel = document.getElementById('analysisGroupSelect');
+  GROUPS_DATA.forEach(function(g, i) {
+    var o = document.createElement('option');
+    o.value = i; o.textContent = g.group+' - '+g.course+' ('+g.instructor+')';
+    sel.appendChild(o);
+  });
+}
+
+function renderAnalysis() {
+  var sel = document.getElementById('analysisGroupSelect');
+  var idx = parseInt(sel.value);
+  var container = document.getElementById('analysisContent');
+  if (isNaN(idx)) { container.innerHTML = '<div class="no-sheet">Select a group above to view analysis</div>'; return; }
+
+  var g = GROUPS_DATA[idx]; var m = marksData[idx] || {};
+  var fields = ['q1','q2','a1','a2','mid'];
+  var fieldLabels = ['Quiz 1','Quiz 2','Assignment 1','Assignment 2','Midterm'];
+
+  var maxDefaults = {q1:10,q2:10,a1:15,a2:15,mid:50};
+  var maxVals = fields.map(function(f) { return parseFloat(m['max_'+f]) || maxDefaults[f]; });
+  var maxTotal = maxVals[0]+maxVals[1]+maxVals[2]+maxVals[3]+maxVals[4];
+
+  var studentData = [];
+  g.students.forEach(function(s, si) {
+    var scores = fields.map(function(f) { return parseFloat(m[si+'_'+f]) || 0; });
+    var total = scores[0]+scores[1]+scores[2]+scores[3]+scores[4];
+    studentData.push({s:s, si:si, scores:scores, total:total});
+  });
+
+  var avg = fields.map(function(_, fi) {
+    var vals = studentData.map(function(sd) { return sd.scores[fi]; }).filter(function(v) { return v > 0; });
+    return vals.length > 0 ? (vals.reduce(function(a,b){return a+b;},0)/vals.length) : 0;
+  });
+
+  var filled = 0, cellTotal = g.students.length * 5;
+  g.students.forEach(function(s, si) {
+    fields.forEach(function(f) { var v = m[si+'_'+f]; if (v !== undefined && v !== null && v !== '') filled++; });
+  });
+  var completionPct = cellTotal > 0 ? Math.round(filled/cellTotal*100) : 0;
+
+  var halfTotal = maxTotal / 2;
+  var aboveHalf = studentData.filter(function(sd) { return sd.total >= halfTotal; }).length;
+  var belowHalf = studentData.filter(function(sd) { return sd.total > 0 && sd.total < halfTotal; }).length;
+  var noMarks = studentData.filter(function(sd) { return sd.total === 0; }).length;
+
+  var html = '<div class="sheet-title">'+escHtml(g.course)+'</div>';
+  html += '<div class="sheet-subtitle">Group: <strong>'+escHtml(g.group)+'</strong> | Instructor: <strong>'+escHtml(g.instructor)+'</strong></div>';
+
+  html += '<div class="analysis-grid">';
+  html += '<div class="analysis-card"><h4>Completion</h4><div class="stat-row"><span>Marks Entered</span><span class="stat-val">'+filled+' / '+cellTotal+'</span></div><div class="stat-row"><span>Completion Rate</span><span class="stat-val '+(completionPct>=75?'highlight-green':completionPct>=50?'highlight-orange':'highlight-red')+'">'+completionPct+'%</span></div></div>';
+  html += '<div class="analysis-card"><h4>Student Performance</h4><div class="stat-row"><span>Above 50%</span><span class="stat-val highlight-green">'+aboveHalf+'</span></div><div class="stat-row"><span>Below 50%</span><span class="stat-val highlight-orange">'+belowHalf+'</span></div><div class="stat-row"><span>No Marks</span><span class="stat-val highlight-red">'+noMarks+'</span></div></div>';
+
+  fieldLabels.forEach(function(label, fi) {
+    var maxVal = maxVals[fi]; var half = maxVal/2;
+    var above = studentData.filter(function(sd) { return sd.scores[fi] >= half && sd.scores[fi] > 0; }).length;
+    var zero = studentData.filter(function(sd) { return sd.scores[fi] === 0 || sd.scores[fi] === null; }).length;
+    html += '<div class="analysis-card"><h4>'+label+' (Max: '+maxVal+')</h4>';
+    html += '<div class="stat-row"><span>Class Average</span><span class="stat-val">'+avg[fi].toFixed(1)+'</span></div>';
+    html += '<div class="stat-row"><span>Above 50% max</span><span class="stat-val highlight-green">'+above+'</span></div>';
+    html += '<div class="stat-row"><span>Not entered</span><span class="stat-val highlight-red">'+zero+'</span></div></div>';
+  });
+  html += '</div>';
+
+  html += '<table><thead><tr><th>S#</th><th>ID</th><th>Name</th>';
+  fieldLabels.forEach(function(l) { html += '<th>'+l+'</th>'; });
+  html += '<th>Total</th><th>Status</th></tr></thead><tbody>';
+
+  studentData.forEach(function(sd) {
+    var pct = maxTotal > 0 ? Math.round(sd.total/maxTotal*100) : 0;
+    var status = pct>=75?'Excellent':pct>=50?'Good':pct>=25?'Weak':sd.total===0?'No marks':'Poor';
+    var cls = pct>=75?'highlight-green':pct>=50?'highlight-orange':'highlight-red';
+    html += '<tr><td>'+sd.s[0]+'</td><td>'+sd.s[1]+'</td><td class="name-col">'+escHtml(sd.s[2])+'</td>';
+    sd.scores.forEach(function(s) { html += '<td>'+(s||'')+'</td>'; });
+    html += '<td><strong>'+sd.total+'</strong></td><td class="'+cls+'" style="font-size:12px;font-weight:600">'+status+'</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  container.innerHTML = html;
+}
+
+// ============ ADMIN ============
+const ADMIN_USER = 's6343@seebvc.edu.om';
+const ADMIN_PASS = 'Abuaysam***79';
+
+function adminLogin() {
+  var u = document.getElementById('adminUser').value;
+  var p = document.getElementById('adminPass').value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    document.getElementById('adminEmailDisplay').textContent = ADMIN_USER;
+    document.getElementById('adminError').style.display = 'none';
+  } else {
+    document.getElementById('adminError').style.display = 'block';
+  }
+}
+
+function adminLogout() {
+  document.getElementById('adminLogin').style.display = 'block';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+}
+
+function uploadDatabase() {
+  var fi = document.getElementById('uploadDbInput');
+  var file = fi.files[0];
+  if (!file) { alert('Please select a JSON file first.'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('Not an array');
+      data.forEach(function(item, i) { if (!item.course || !item.group || !item.students) throw new Error('Item '+i+' missing required fields'); });
+      localStorage.setItem('uploadedDatabase', JSON.stringify(data));
+      document.getElementById('uploadMsg').style.display = 'block';
+      document.getElementById('uploadMsg').textContent = 'Database updated! Reloading page...';
+      setTimeout(function() { location.reload(); }, 1500);
+    } catch(err) { alert('Invalid JSON file: '+err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function saveMarks() {
+  var blob = new Blob([JSON.stringify(marksData, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url;
+  a.download = 'marks_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function loadMarks() {
+  var fi = document.getElementById('loadMarksInput');
+  var file = fi.files[0];
+  if (!file) { alert('Please select a backup JSON file.'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid marks data format');
+      marksData = data;
+      saveToStorage();
+      document.getElementById('loadMsg').style.display = 'block';
+      if (currentIndex >= 0) renderSheet(currentIndex);
+      if (currentTab === 'dashboard') renderDashboard();
+      if (currentTab === 'analysis') renderAnalysis();
+    } catch(err) { alert('Invalid backup file: '+err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
